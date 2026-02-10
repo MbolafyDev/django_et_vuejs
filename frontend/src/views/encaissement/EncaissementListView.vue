@@ -10,7 +10,9 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div class="zs-dot"></div>
               <h4 class="mb-0 zs-title">Encaissement</h4>
-              <span class="zs-pill-soft">
+
+              <!-- ✅ plus petit -->
+              <span class="zs-pill-soft zs-pill-soft--sm">
                 <i class="fa-solid fa-cash-register me-1"></i> Paiements & Statuts
               </span>
             </div>
@@ -60,14 +62,22 @@
 
           <!-- actions -->
           <div class="d-flex gap-2 flex-wrap align-items-center">
+            <!-- ✅ Switch Table/Card (réutilise FacturationToolbar) -->
+            <FacturationToolbar
+              :loading="loading"
+              :loadingBulkPdf="false"
+              :selectedCount="0"
+              :totalCount="count"
+              :viewMode="viewMode"
+              @reload="load"
+              @previewSelectedPdf="noop"
+              @downloadSelectedPdf="noop"
+              @changeView="(m:any) => (viewMode = m)"
+            />
+
             <button class="btn btn-primary zs-btn zs-btn-neo" @click="goPending">
               <i class="fa-solid fa-cash-register me-1"></i>
               Encaisser une commande
-            </button>
-
-            <button class="btn btn-outline-secondary zs-btn zs-btn-neo" @click="load" :disabled="loading" title="Rafraîchir">
-              <i class="fa-solid fa-rotate"></i>
-              <span class="ms-2 d-none d-sm-inline">Rafraîchir</span>
             </button>
 
             <button class="btn btn-outline-primary zs-btn zs-btn-neo" @click="toggleFilters" title="Filtres">
@@ -136,11 +146,18 @@
           <div class="d-flex align-items-center gap-2 min-width-0">
             <i class="fa-solid fa-list me-1 text-primary"></i>
             <span class="fw-bold">Commandes</span>
-            <span class="zs-pill-count">{{ count }}</span>
+            <!-- ✅ compteur petit -->
+            <span class="zs-pill-count zs-pill-count--sm">{{ count }}</span>
           </div>
 
           <div class="d-flex align-items-center gap-2">
-            <select v-model.number="pageSize" class="form-select form-select-sm zs-input" style="width: 96px;" title="Taille page" @change="onPageSizeChange">
+            <select
+              v-model.number="pageSize"
+              class="form-select form-select-sm zs-input"
+              style="width: 96px;"
+              title="Taille page"
+              @change="onPageSizeChange"
+            >
               <option :value="10">10</option>
               <option :value="20">20</option>
               <option :value="50">50</option>
@@ -152,61 +169,166 @@
         <div class="zs-panel-body p-0">
           <div v-if="loading" class="p-3 text-muted">Chargement...</div>
 
-          <div v-else class="zs-list">
-            <div class="zs-list-head">
-              <div class="zs-h-id">#</div>
-              <div class="zs-h-client">Client</div>
-              <div class="zs-h-contact">Contact</div>
-              <div class="zs-h-total">Total</div>
-              <div class="zs-h-liv">Livraison</div>
-              <div class="zs-h-pay">Paiement</div>
-              <div class="zs-h-mode">Mode</div>
-              <div class="zs-h-ref">Réf.</div>
-              <div class="zs-h-actions"></div>
+          <div v-else>
+            <!-- ===== MODE TABLE ===== -->
+            <div v-if="viewMode === 'table'" class="zs-list">
+              <div class="zs-list-head">
+                <div class="zs-h-id">#</div>
+                <div class="zs-h-client">Client</div>
+                <div class="zs-h-contact">Contact</div>
+                <div class="zs-h-total">Total</div>
+                <div class="zs-h-liv">Livraison</div>
+                <div class="zs-h-pay">Paiement</div>
+                <div class="zs-h-mode">Mode</div>
+                <div class="zs-h-ref">Réf.</div>
+                <div class="zs-h-actions"></div>
+              </div>
+
+              <div v-if="rows.length === 0" class="text-center text-muted py-4">
+                <i class="fa-solid fa-circle-info me-1"></i> Aucune commande
+              </div>
+
+              <div v-else class="zs-list-body">
+                <div v-for="c in rows" :key="c.id" class="zs-row">
+                  <div class="zs-cell zs-id fw-bold">#{{ c.id }}</div>
+
+                  <div class="zs-cell zs-client">
+                    <div class="fw-semibold zs-ellipsis2">{{ c.client_nom }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-contact">
+                    <div class="text-muted small zs-ellipsis2">{{ c.client_contact || "-" }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-total text-end">
+                    <div class="fw-bold">{{ money(c.total_commande) }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-liv">
+                    <div class="small">{{ c.date_livraison || "-" }}</div>
+                  </div>
+
+                  <!-- ✅ BADGE TABLE PETIT -->
+                  <div class="zs-cell zs-pay">
+                    <span class="zs-status zs-status--table" :class="paiementClass(c.paiement_statut)">
+                      <span class="zs-status-dot"></span>
+                      <i class="fa-solid me-1" :class="paiementIcon(c.paiement_statut)"></i>
+                      {{ paiementLabel(c.paiement_statut) }}
+                    </span>
+                  </div>
+
+                  <div class="zs-cell zs-mode">
+                    <div class="small">{{ c.paiement_mode || "-" }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-ref">
+                    <div class="small text-muted zs-ellipsis2">{{ c.paiement_reference || "-" }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-actions text-end">
+                    <div class="zs-actions">
+                      <button
+                        v-if="c.paiement_statut === 'EN_ATTENTE'"
+                        class="btn btn-sm btn-primary zs-btn zs-btn-neo"
+                        @click="goEncaisser(c.id)"
+                      >
+                        <i class="fa-solid fa-cash-register me-1"></i> Encaisser
+                      </button>
+
+                      <button
+                        v-if="c.paiement_statut === 'EN_ATTENTE'"
+                        class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo"
+                        @click="annuler(c.id)"
+                        :disabled="loading"
+                      >
+                        <i class="fa-solid fa-ban me-1"></i> Annuler
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ✅ sub line (MOBILE ONLY) -->
+                  <div class="zs-sub">
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-user me-1"></i> Client</div>
+                      <div class="zs-subval">
+                        <div class="fw-semibold zs-ellipsis2">{{ c.client_nom }}</div>
+                        <div class="small text-muted zs-ellipsis2">{{ c.client_contact || "-" }}</div>
+                      </div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-coins me-1"></i> Total</div>
+                      <div class="zs-subval fw-bold">{{ money(c.total_commande) }}</div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-credit-card me-1"></i> Paiement</div>
+                      <div class="zs-subval">
+                        <span class="zs-status zs-status--table" :class="paiementClass(c.paiement_statut)">
+                          <span class="zs-status-dot"></span>
+                          {{ paiementLabel(c.paiement_statut) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-receipt me-1"></i> Référence</div>
+                      <div class="zs-subval small text-muted zs-ellipsis2">{{ c.paiement_reference || "-" }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div v-if="rows.length === 0" class="text-center text-muted py-4">
-              <i class="fa-solid fa-circle-info me-1"></i> Aucune commande
-            </div>
+            <!-- ===== MODE CARD ===== -->
+            <div v-else class="zs-cards">
+              <div v-if="rows.length === 0" class="text-center text-muted py-4">
+                <i class="fa-solid fa-circle-info me-1"></i> Aucune commande
+              </div>
 
-            <div v-else class="zs-list-body">
-              <div v-for="c in rows" :key="c.id" class="zs-row">
-                <div class="zs-cell zs-id fw-bold">#{{ c.id }}</div>
+              <div v-else class="zs-cards-grid">
+                <div v-for="c in rows" :key="c.id" class="zs-card">
+                  <div class="zs-card-top">
+                    <div class="fw-bold">
+                      #{{ c.id }}
+                      <span class="text-muted fw-normal ms-1">{{ c.date_livraison || "-" }}</span>
+                    </div>
 
-                <div class="zs-cell zs-client">
-                  <div class="fw-semibold zs-ellipsis2">{{ c.client_nom }}</div>
-                </div>
+                    <span class="zs-status zs-card-status" :class="paiementClass(c.paiement_statut)">
+                      <span class="zs-status-dot"></span>
+                      <i class="fa-solid me-1" :class="paiementIcon(c.paiement_statut)"></i>
+                      {{ paiementLabel(c.paiement_statut) }}
+                    </span>
+                  </div>
 
-                <div class="zs-cell zs-contact">
-                  <div class="text-muted small zs-ellipsis2">{{ c.client_contact || "-" }}</div>
-                </div>
+                  <div class="zs-card-body">
+                    <div class="zs-card-row">
+                      <div class="zs-k">Client</div>
+                      <div class="zs-v fw-semibold zs-ellipsis2">{{ c.client_nom }}</div>
+                    </div>
 
-                <div class="zs-cell zs-total text-end">
-                  <div class="fw-bold">{{ money(c.total_commande) }}</div>
-                </div>
+                    <div class="zs-card-row">
+                      <div class="zs-k">Contact</div>
+                      <div class="zs-v text-muted small zs-ellipsis2">{{ c.client_contact || "-" }}</div>
+                    </div>
 
-                <div class="zs-cell zs-liv">
-                  <div class="small">{{ c.date_livraison || "-" }}</div>
-                </div>
+                    <div class="zs-card-row">
+                      <div class="zs-k">Total</div>
+                      <div class="zs-v fw-bold">{{ money(c.total_commande) }}</div>
+                    </div>
 
-                <div class="zs-cell zs-pay">
-                  <span class="zs-status" :class="paiementClass(c.paiement_statut)">
-                    <span class="zs-status-dot"></span>
-                    <i class="fa-solid me-1" :class="paiementIcon(c.paiement_statut)"></i>
-                    {{ paiementLabel(c.paiement_statut) }}
-                  </span>
-                </div>
+                    <div class="zs-card-row">
+                      <div class="zs-k">Mode</div>
+                      <div class="zs-v small">{{ c.paiement_mode || "-" }}</div>
+                    </div>
 
-                <div class="zs-cell zs-mode">
-                  <div class="small">{{ c.paiement_mode || "-" }}</div>
-                </div>
+                    <div class="zs-card-row">
+                      <div class="zs-k">Réf.</div>
+                      <div class="zs-v small text-muted zs-ellipsis2">{{ c.paiement_reference || "-" }}</div>
+                    </div>
+                  </div>
 
-                <div class="zs-cell zs-ref">
-                  <div class="small text-muted zs-ellipsis2">{{ c.paiement_reference || "-" }}</div>
-                </div>
-
-                <div class="zs-cell zs-actions text-end">
-                  <div class="zs-actions">
+                  <div class="zs-card-actions">
                     <button
                       v-if="c.paiement_statut === 'EN_ATTENTE'"
                       class="btn btn-sm btn-primary zs-btn zs-btn-neo"
@@ -225,40 +347,9 @@
                     </button>
                   </div>
                 </div>
-
-                <!-- ✅ sub line (MOBILE ONLY) -->
-                <div class="zs-sub">
-                  <div class="zs-subitem">
-                    <div class="zs-subkey"><i class="fa-solid fa-user me-1"></i> Client</div>
-                    <div class="zs-subval">
-                      <div class="fw-semibold zs-ellipsis2">{{ c.client_nom }}</div>
-                      <div class="small text-muted zs-ellipsis2">{{ c.client_contact || "-" }}</div>
-                    </div>
-                  </div>
-
-                  <div class="zs-subitem">
-                    <div class="zs-subkey"><i class="fa-solid fa-coins me-1"></i> Total</div>
-                    <div class="zs-subval fw-bold">{{ money(c.total_commande) }}</div>
-                  </div>
-
-                  <div class="zs-subitem">
-                    <div class="zs-subkey"><i class="fa-solid fa-credit-card me-1"></i> Paiement</div>
-                    <div class="zs-subval">
-                      <span class="zs-status" :class="paiementClass(c.paiement_statut)">
-                        <span class="zs-status-dot"></span>
-                        {{ paiementLabel(c.paiement_statut) }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="zs-subitem">
-                    <div class="zs-subkey"><i class="fa-solid fa-receipt me-1"></i> Référence</div>
-                    <div class="zs-subval small text-muted zs-ellipsis2">{{ c.paiement_reference || "-" }}</div>
-                  </div>
-                </div>
-
               </div>
             </div>
+
           </div>
         </div>
 
@@ -285,6 +376,7 @@
 
 <script setup lang="ts">
 import AppNavbar from "@/components/AppNavbar.vue";
+import FacturationToolbar from "@/components/facturation/FacturationToolbar.vue";
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { EncaissementAPI, type EncaissementCommande } from "@/services/encaissement";
@@ -304,6 +396,9 @@ const pageSize = ref(20);
 const showFilters = ref(false);
 function toggleFilters(){ showFilters.value = !showFilters.value; }
 
+const viewMode = ref<"table" | "card">("table");
+const noop = () => {}; // pour les events PDF non utilisés
+
 const hasActiveFilters = computed(() => !!(paiement_statut.value || q.value.trim()));
 const hasNext = computed(() => page.value * pageSize.value < count.value);
 
@@ -320,7 +415,7 @@ function paiementLabel(s: any){
 
 function paiementClass(s: any){
   if (s === "PAYEE") return "zs-st zs-st-done";
-  if (s === "ANNULEE") return "zs-st zs-st-cancel";
+  if (s === "ANNULEE") return "zs-st zs-st-neutral";
   return "zs-st zs-st-ship";
 }
 
@@ -406,6 +501,14 @@ load();
 <style scoped>
 .min-width-0{ min-width:0; }
 
+.zs-pill-soft--sm{
+  padding: 0.10rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+
 .zs-dot-mini{
   width: 8px; height: 8px;
   border-radius: 999px;
@@ -444,11 +547,9 @@ load();
 .zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* ✅ FIX IMPORTANT: cacher le bloc résumé sur desktop */
-.zs-sub{
-  display: none;          /* ✅ desktop: pas de répétition */
-}
+.zs-sub{ display: none; }
 
-/* ✅ mobile: on cache l'entête et on affiche le bloc résumé */
+/* ✅ mobile */
 @media (max-width: 992px){
   .zs-list-head{ display:none; }
   .zs-row{
@@ -459,9 +560,67 @@ load();
   .zs-id,.zs-client,.zs-contact,.zs-total,.zs-liv,.zs-pay,.zs-mode,.zs-ref,.zs-actions{ grid-column:1 !important; }
 
   .zs-sub{
-    display: grid;        /* ✅ mobile: on affiche le résumé */
+    display: grid;
     grid-column: 1 !important;
     grid-template-columns: 1fr !important;
   }
+}
+
+/* ===== Card mode ===== */
+.zs-cards{ background: rgba(255,255,255,.70); }
+.zs-cards-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+@media (max-width: 1200px){
+  .zs-cards-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px){
+  .zs-cards-grid{ grid-template-columns: 1fr; }
+}
+
+.zs-card{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.85);
+  box-shadow: 0 10px 30px rgba(0,0,0,.06);
+  overflow:hidden;
+}
+
+.zs-card-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.zs-card-body{
+  padding: 10px 12px 12px;
+  display:grid;
+  gap: 8px;
+}
+.zs-card-row{
+  display:grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items:center;
+}
+.zs-k{ font-size: .78rem; color: rgba(0,0,0,.55); }
+.zs-v{ min-width: 0; }
+.zs-card-actions{
+  display:flex;
+  gap: 8px;
+  justify-content:flex-end;
+  padding: 10px 12px 12px;
+}
+
+/* badge statut compact dans les cards */
+.zs-card-status{
+  padding: 0.18rem 0.5rem !important;
+  font-size: .72rem !important;
+  line-height: 1 !important;
 }
 </style>

@@ -4,3 +4,21 @@
   width: 100%;
   min-height: 100vh;
 }
+
+
+.zs-status--table{
+  padding: 0.20rem 0.50rem !important;
+  font-size: 0.70rem !important;
+  font-weight: 900 !important;
+  letter-spacing: .1px !important;
+  box-shadow: none !important;
+}
+.zs-status--table .zs-status-dot{
+  width: 6px !important;
+  height: 6px !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.65) !important;
+}
+.zs-status--table i{
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+}

@@ -1,3 +1,4 @@
+<!-- frontend/src/views/FacturesView.vue -->
 <template>
   <div class="zs-root">
     <AppNavbar />
@@ -10,13 +11,14 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div class="zs-dot"></div>
               <h4 class="mb-0 zs-title">Facturation</h4>
-              <span class="zs-pill-soft">
+
+              <span class="zs-pill-soft zs-pill-soft--sm">
                 <i class="fa-solid fa-file-invoice-dollar me-1"></i> Proforma & Facture
               </span>
             </div>
 
             <div class="text-muted small mt-1">
-              Proforma si non encaissé • Facture si encaissé • PDF & ZIP multi-sélection
+              Proforma si non encaissé • Facture si encaissé • PDF multi-sélection
             </div>
 
             <!-- KPIs -->
@@ -69,11 +71,11 @@
               :loadingBulkPdf="loadingBulkPdf"
               :selectedCount="selectedIds.length"
               :totalCount="commandes.length"
+              :viewMode="viewMode"
               @reload="load"
               @previewSelectedPdf="previewSelectedPdf"
               @downloadSelectedPdf="downloadSelectedPdf"
-              @downloadAll="downloadAll"
-              @downloadSelectedZip="downloadSelectedZip"
+              @changeView="(m:any) => (viewMode = m)"
             />
           </div>
         </div>
@@ -90,7 +92,7 @@
           <div class="d-flex align-items-center gap-2 min-width-0">
             <i class="fa-solid fa-receipt me-1 text-primary"></i>
             <span class="fw-bold">Liste des factures</span>
-            <span class="zs-pill-count">{{ totalCount }}</span>
+            <span class="zs-pill-count zs-pill-count--sm">{{ totalCount }}</span>
           </div>
         </div>
 
@@ -109,6 +111,7 @@
               :isAllSelected="isAllSelected"
               :loadingPdfId="loadingPdfId"
               :formatMoneyFn="formatMoney"
+              :viewMode="viewMode"
               @update:selectedIds="(v:any) => (selectedIds = v)"
               @toggleAll="toggleAll"
               @openPdf="openPdf"
@@ -148,7 +151,11 @@ export default defineComponent({
   components: { AppNavbar, FacturationToolbar, FacturationTable },
   data() {
     const f = useFacturation();
-    return { ...f, formatMoney };
+    return {
+      ...f,
+      formatMoney,
+      viewMode: "table" as "table" | "card",
+    };
   },
   mounted() {
     this.load();
@@ -158,6 +165,28 @@ export default defineComponent({
 
 <style scoped>
 .min-width-0 { min-width: 0; }
+
+/* Pill du titre : plus petit */
+.zs-pill-soft--sm{
+  padding: 0.10rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+.zs-pill-soft--sm i{
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+  vertical-align: -1px;
+}
+
+/* compteur du panel : plus petit */
+.zs-pill-count--sm{
+  padding: 0.08rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+}
 </style>
 
 <style>

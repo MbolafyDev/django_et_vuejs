@@ -10,7 +10,8 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div class="zs-dot"></div>
               <h4 class="mb-0 zs-title">Encaisser commande</h4>
-              <span class="zs-pill-soft">
+
+              <span class="zs-pill-soft zs-pill-soft--sm">
                 <i class="fa-solid fa-check-to-slot me-1"></i> Validation paiement
               </span>
             </div>
@@ -35,7 +36,8 @@
             Encaisser #{{ id }}
           </div>
 
-          <span v-if="commande" class="zs-status zs-st zs-st-ship">
+          <!-- ✅ badge compact -->
+          <span v-if="commande" class="zs-status zs-st zs-st-ship zs-status--table">
             <span class="zs-status-dot"></span>
             <i class="fa-solid fa-hourglass-half me-1"></i>
             EN ATTENTE
@@ -200,4 +202,11 @@ onMounted(load);
 <style scoped>
 .min-width-0{ min-width:0; }
 .zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.zs-pill-soft--sm{
+  padding: 0.10rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
 </style>
