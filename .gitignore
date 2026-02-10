@@ -2,3 +2,5 @@
 node_modules/
 __pycache__/
 venv/
+media/
+db.sqlite3
