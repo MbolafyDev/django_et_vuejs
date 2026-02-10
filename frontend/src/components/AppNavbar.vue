@@ -44,12 +44,13 @@ const isActive = (path: string) => route.path.startsWith(path);
 /* ===========================
    ✅ Helpers user display
 =========================== */
-const displayName = computed(() => {
+const displayFirstName = computed(() => {
   const u = auth.user;
   if (!u) return "";
-  const full = `${u.first_name || ""} ${u.last_name || ""}`.trim();
-  return full || u.username || u.email || "Utilisateur";
+  const first = (u.first_name || "").trim();
+  return first || u.username || u.email || "Utilisateur";
 });
+
 
 const userAvatar = computed(() => {
   const url = auth.user?.photo_profil_url || "";
@@ -283,7 +284,7 @@ watch(
                 </span>
                 <span v-else class="zs-user-dot"></span>
                 <div class="d-flex flex-column lh-1">
-                  <span class="zs-user-name">{{ displayName }}</span>
+                  <span class="zs-user-name">{{ displayFirstName }}</span>
                   <span class="zs-user-sub">{{ userRoleLabel }}</span>
                 </div>
               </div>
@@ -311,7 +312,7 @@ watch(
                         <i v-else class="fa-solid fa-user-pen"></i>
                       </span>
                       <div class="min-width-0">
-                        <div class="fw-bold zs-ellipsis">{{ displayName }}</div>
+                        <div class="fw-bold zs-ellipsis">{{ displayFirstName }}</div>
                         <div class="small text-muted zs-ellipsis">Modifier mon profil</div>
                       </div>
                       <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
@@ -423,7 +424,7 @@ watch(
             <span v-else class="zs-user-dot"></span>
 
             <div class="min-width-0">
-              <div class="fw-bold zs-ellipsis3">{{ displayName }}</div>
+              <div class="fw-bold zs-ellipsis3">{{ displayFirstName }}</div>
               <div class="small text-muted zs-ellipsis3">{{ userRoleLabel }}</div>
             </div>
           </div>
