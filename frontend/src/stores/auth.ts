@@ -31,8 +31,15 @@ type LoginResponse = {
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
 
+function getAccessToken() {
+  return localStorage.getItem(ACCESS_KEY);
+}
 function getRefreshToken() {
   return localStorage.getItem(REFRESH_KEY);
+}
+function setTokens(access: string, refresh: string) {
+  localStorage.setItem(ACCESS_KEY, access);
+  localStorage.setItem(REFRESH_KEY, refresh);
 }
 
 export const useAuthStore = defineStore("auth", {
@@ -45,9 +52,7 @@ export const useAuthStore = defineStore("auth", {
   getters: {
     isAuthenticated: (state) => !!state.user,
     fullName: (state) =>
-      state.user
-        ? `${state.user.first_name || ""} ${state.user.last_name || ""}`.trim()
-        : "",
+      state.user ? `${state.user.first_name || ""} ${state.user.last_name || ""}`.trim() : "",
 
     // ✅ helpers role
     isAdmin: (state) => state.user?.role === "ADMIN",
@@ -58,17 +63,23 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     // ✅ restauration de session au refresh
     async initFromStorage() {
-      const access = localStorage.getItem(ACCESS_KEY);
-      const refresh = localStorage.getItem(REFRESH_KEY);
+      const access = getAccessToken();
+      const refresh = getRefreshToken();
 
       if (!access && !refresh) {
         this.user = null;
         return;
       }
 
+      /**
+       * ✅ IMPORTANT
+       * Même si access est expiré, l'interceptor de api.ts va refresh automatiquement
+       * donc fetchMe() ne doit plus provoquer une déconnexion "au bout de quelques minutes".
+       */
       try {
         await this.fetchMe();
       } catch (e) {
+        // Si refresh aussi invalide => on nettoie.
         this.logoutLocalOnly();
       }
     },
@@ -87,13 +98,9 @@ export const useAuthStore = defineStore("auth", {
       this.lastError = "";
 
       try {
-        const res = await api.post<LoginResponse>("auth/login/", {
-          email,
-          password,
-        });
+        const res = await api.post<LoginResponse>("auth/login/", { email, password });
 
-        localStorage.setItem(ACCESS_KEY, res.data.access);
-        localStorage.setItem(REFRESH_KEY, res.data.refresh);
+        setTokens(res.data.access, res.data.refresh);
 
         if (res.data.user) {
           this.user = res.data.user;
@@ -114,6 +121,7 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async fetchMe() {
+      // ✅ si access expiré => api.ts refresh et rejoue automatiquement
       const res = await api.get<User>("auth/me/");
       this.user = res.data;
     },
