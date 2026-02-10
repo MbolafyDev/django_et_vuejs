@@ -123,13 +123,13 @@ const ROLE_PERMS: Record<UserRole, Permission[]> = {
     "commandes.update",
     // pas de delete
 
-    "encaissement.view",
-    "encaissement.encaisser",
+    // "encaissement.view",
+    // "encaissement.encaisser",
     // annuler paiement => je mets ADMIN only par défaut, sinon décommente :
     // "encaissement.annuler_paiement",
 
-    "clients.view",
-    "factures.view",
+    // "clients.view",
+    // "factures.view",
 
     // pas de dashboard, pas d'articles, pas de config
   ],

@@ -23,17 +23,22 @@ const isAdmin = computed(() => auth.user?.role === "ADMIN");
 const menus = computed(() => {
   const base = [
     { to: "/commandes", label: "Commandes", icon: "fa-solid fa-receipt" },
-    { to: "/factures", label: "Facturation", icon: "fa-solid fa-file-invoice-dollar" },
-    { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" },
-    { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" },
-    { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" },
+    // { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" },
+    // { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" },
+    // { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" },
     { to: "/articles", label: "Articles", icon: "fa-solid fa-box" },
     { to: "/clients", label: "Clients", icon: "fa-solid fa-users" },
   ];
 
   // ✅ Charges visible uniquement ADMIN
   if (isAdmin.value) {
+    // ✅ Facturation ADMIN ONLY
+    base.splice(1, 0, { to: "/factures", label: "Facturation", icon: "fa-solid fa-file-invoice-dollar" });
+    base.splice(3, 0, { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" });
+    base.splice(4, 0, { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" });
+
     base.splice(2, 0, { to: "/charges", label: "Charges", icon: "fa-solid fa-coins" }); // après Facturation
+    base.splice(5, 0, { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" }); // après Facturation
   }
 
   return base;
@@ -235,9 +240,6 @@ watch(
           </span>
           <div class="zs-brand-text">
             <div class="zs-brand-name">MBOLAFY</div>
-            <div class="zs-brand-sub d-none d-sm-block">
-              {{ auth.isAuthenticated ? userRoleLabel : "Ventes & Livraison" }}
-            </div>
           </div>
         </router-link>
 
@@ -285,7 +287,6 @@ watch(
                 <span v-else class="zs-user-dot"></span>
                 <div class="d-flex flex-column lh-1">
                   <span class="zs-user-name">{{ displayFirstName }}</span>
-                  <span class="zs-user-sub">{{ userRoleLabel }}</span>
                 </div>
               </div>
 
@@ -407,7 +408,6 @@ watch(
               </span>
               <div class="min-width-0">
                 <div class="zs-sb-title zs-ellipsis3">MBOLAFY</div>
-                <div class="zs-sb-sub zs-ellipsis3">{{ auth.isAuthenticated ? userRoleLabel : "Ventes & Livraison" }}</div>
               </div>
             </div>
 
@@ -425,7 +425,6 @@ watch(
 
             <div class="min-width-0">
               <div class="fw-bold zs-ellipsis3">{{ displayFirstName }}</div>
-              <div class="small text-muted zs-ellipsis3">{{ userRoleLabel }}</div>
             </div>
           </div>
 
