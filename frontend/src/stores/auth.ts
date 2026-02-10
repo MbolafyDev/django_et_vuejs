@@ -1,12 +1,25 @@
 import { defineStore } from "pinia";
 import { api } from "../services/api";
 
+export type UserRole = "ADMIN" | "COMMERCIALE" | "COMMUNITY_MANAGER";
+export type UserSexe = "M" | "F" | "AUTRE" | "";
+
 export type User = {
   id: number;
   username: string;
   email: string;
   first_name?: string;
   last_name?: string;
+
+  // ✅ role
+  role?: UserRole;
+
+  // ✅ champs profil
+  photo_profil_url?: string | null;
+  photo_couverture_url?: string | null;
+  adresse?: string;
+  numero_telephone?: string;
+  sexe?: UserSexe;
 };
 
 type LoginResponse = {
@@ -32,7 +45,14 @@ export const useAuthStore = defineStore("auth", {
   getters: {
     isAuthenticated: (state) => !!state.user,
     fullName: (state) =>
-      state.user ? `${state.user.first_name || ""} ${state.user.last_name || ""}`.trim() : "",
+      state.user
+        ? `${state.user.first_name || ""} ${state.user.last_name || ""}`.trim()
+        : "",
+
+    // ✅ helpers role
+    isAdmin: (state) => state.user?.role === "ADMIN",
+    isCommerciale: (state) => state.user?.role === "COMMERCIALE",
+    isCommunityManager: (state) => state.user?.role === "COMMUNITY_MANAGER",
   },
 
   actions: {
@@ -41,17 +61,14 @@ export const useAuthStore = defineStore("auth", {
       const access = localStorage.getItem(ACCESS_KEY);
       const refresh = localStorage.getItem(REFRESH_KEY);
 
-      // si pas de tokens => pas connecté
       if (!access && !refresh) {
         this.user = null;
         return;
       }
 
-      // on tente /me (si access expiré, api.ts va refresh automatiquement)
       try {
         await this.fetchMe();
       } catch (e) {
-        // si même après refresh ça échoue => tokens invalides
         this.logoutLocalOnly();
       }
     },
@@ -64,12 +81,16 @@ export const useAuthStore = defineStore("auth", {
       this.lastError = "";
     },
 
-    async login(username: string, password: string) {
+    // ✅ LOGIN PAR EMAIL
+    async login(email: string, password: string) {
       this.loading = true;
       this.lastError = "";
 
       try {
-        const res = await api.post<LoginResponse>("auth/login/", { username, password });
+        const res = await api.post<LoginResponse>("auth/login/", {
+          email,
+          password,
+        });
 
         localStorage.setItem(ACCESS_KEY, res.data.access);
         localStorage.setItem(REFRESH_KEY, res.data.refresh);
@@ -113,7 +134,14 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    async register(payload: any) {
+    // ✅ REGISTER: first_name, last_name, username, email, password
+    async register(payload: {
+      first_name: string;
+      last_name: string;
+      username: string;
+      email: string;
+      password: string;
+    }) {
       this.lastError = "";
       await api.post("auth/register/", payload);
     },
@@ -126,6 +154,51 @@ export const useAuthStore = defineStore("auth", {
     async resetPassword(uid: string, token: string, new_password: string) {
       this.lastError = "";
       await api.post("auth/reset-password/", { uid, token, new_password });
+    },
+
+    // ✅ UPDATE PROFILE (multipart) : adresse, téléphone, sexe, photo profil/couverture
+    async updateProfile(payload: {
+      first_name?: string;
+      last_name?: string;
+      adresse?: string;
+      numero_telephone?: string;
+      sexe?: UserSexe;
+      photo_profil?: File | null;
+      photo_couverture?: File | null;
+    }) {
+      this.lastError = "";
+      this.loading = true;
+
+      try {
+        const fd = new FormData();
+
+        if (payload.first_name !== undefined) fd.append("first_name", payload.first_name);
+        if (payload.last_name !== undefined) fd.append("last_name", payload.last_name);
+        if (payload.adresse !== undefined) fd.append("adresse", payload.adresse);
+        if (payload.numero_telephone !== undefined) fd.append("numero_telephone", payload.numero_telephone);
+        if (payload.sexe !== undefined) fd.append("sexe", payload.sexe);
+
+        if (payload.photo_profil) fd.append("photo_profil", payload.photo_profil);
+        if (payload.photo_couverture) fd.append("photo_couverture", payload.photo_couverture);
+
+        // PATCH /auth/profile/
+        const res = await api.patch<{ message: string; user: User }>("auth/profile/", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        this.user = res.data.user;
+        return res;
+      } catch (e: any) {
+        const data = e?.response?.data;
+        this.lastError =
+          data?.detail ||
+          data?.message ||
+          (typeof data === "string" ? data : "") ||
+          "Erreur lors de la mise à jour du profil.";
+        throw e;
+      } finally {
+        this.loading = false;
+      }
     },
   },
 });

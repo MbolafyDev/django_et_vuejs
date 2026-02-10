@@ -25,6 +25,29 @@ const menus = [
 const isActive = (path: string) => route.path.startsWith(path);
 
 /* ===========================
+   ✅ Helpers user display
+=========================== */
+const displayName = computed(() => {
+  const u = auth.user;
+  if (!u) return "";
+  const full = `${u.first_name || ""} ${u.last_name || ""}`.trim();
+  return full || u.username || u.email || "Utilisateur";
+});
+
+const userAvatar = computed(() => {
+  const url = auth.user?.photo_profil_url || "";
+  return url && url.trim().length > 0 ? url : null;
+});
+
+const userRoleLabel = computed(() => {
+  const r = auth.user?.role;
+  if (r === "ADMIN") return "Admin";
+  if (r === "COMMUNITY_MANAGER") return "Community manager";
+  if (r === "COMMERCIALE") return "Commerciale";
+  return "Utilisateur";
+});
+
+/* ===========================
    Tooltips Bootstrap (hover seulement) - desktop only
 =========================== */
 function disposeAllTooltips() {
@@ -79,7 +102,6 @@ async function loadConfigLinks() {
 
 /* ===========================
    ✅ Sidebar mobile (TELEPORT vers <body>)
-   => évite d’être "coupé" / mal empilé dans la navbar
 =========================== */
 const isMobile = ref(false);
 const sidebarOpen = ref(false);
@@ -103,8 +125,6 @@ function openSidebar() {
   lastActiveEl.value = document.activeElement as HTMLElement | null;
   sidebarOpen.value = true;
   lockScroll();
-
-  // focus sur le bouton fermer (si présent)
   nextTick(() => {
     const btn = document.querySelector(".zs-sb-close") as HTMLButtonElement | null;
     btn?.focus();
@@ -113,7 +133,6 @@ function openSidebar() {
 function closeSidebar() {
   sidebarOpen.value = false;
   unlockScroll();
-  // restore focus
   nextTick(() => lastActiveEl.value?.focus?.());
 }
 function toggleSidebar() {
@@ -198,7 +217,9 @@ watch(
           </span>
           <div class="zs-brand-text">
             <div class="zs-brand-name">MBOLAFY</div>
-            <div class="zs-brand-sub d-none d-sm-block">Admin • Ventes & Livraison</div>
+            <div class="zs-brand-sub d-none d-sm-block">
+              {{ auth.isAuthenticated ? userRoleLabel : "Ventes & Livraison" }}
+            </div>
           </div>
         </router-link>
 
@@ -207,7 +228,7 @@ watch(
           <span class="zs-toggler-icon"></span>
         </button>
 
-        <!-- ✅ DESKTOP: menus visibles (inchangé) -->
+        <!-- ✅ DESKTOP -->
         <div class="navbar-collapse d-none d-lg-flex">
           <ul class="navbar-nav zs-nav-capsule">
             <li v-for="m in menus" :key="m.to" class="nav-item">
@@ -238,11 +259,19 @@ watch(
             </template>
 
             <template v-else>
+              <!-- ✅ User chip desktop -->
               <div class="zs-user d-none d-lg-flex align-items-center gap-2">
-                <span class="zs-user-dot"></span>
-                <span class="zs-user-name">{{ auth.user?.username }}</span>
+                <span v-if="userAvatar" class="zs-user-avatar">
+                  <img :src="userAvatar" alt="avatar" />
+                </span>
+                <span v-else class="zs-user-dot"></span>
+                <div class="d-flex flex-column lh-1">
+                  <span class="zs-user-name">{{ displayName }}</span>
+                  <span class="zs-user-sub">{{ userRoleLabel }}</span>
+                </div>
               </div>
 
+              <!-- ✅ Dropdown paramètres -->
               <div class="nav-item dropdown">
                 <button
                   class="btn zs-btn zs-btn-neo zs-btn-gear dropdown-toggle"
@@ -256,7 +285,25 @@ watch(
                   <i class="fa-solid fa-gear"></i>
                 </button>
 
-                <ul class="dropdown-menu dropdown-menu-end shadow zs-dd" style="min-width: 290px;">
+                <ul class="dropdown-menu dropdown-menu-end shadow zs-dd" style="min-width: 310px;">
+                  <!-- ✅ Profil -->
+                  <li>
+                    <router-link class="dropdown-item d-flex align-items-center gap-2" to="/profil">
+                      <span class="zs-dd-ico">
+                        <img v-if="userAvatar" :src="userAvatar" class="zs-dd-avatar" alt="" />
+                        <i v-else class="fa-solid fa-user-pen"></i>
+                      </span>
+                      <div class="min-width-0">
+                        <div class="fw-bold zs-ellipsis">{{ displayName }}</div>
+                        <div class="small text-muted zs-ellipsis">Modifier mon profil</div>
+                      </div>
+                      <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
+                    </router-link>
+                  </li>
+
+                  <li><hr class="dropdown-divider" /></li>
+
+                  <!-- ✅ Configuration dynamique -->
                   <li>
                     <h6 class="dropdown-header d-flex align-items-center justify-content-between">
                       <span>Configuration</span>
@@ -329,7 +376,7 @@ watch(
     </nav>
   </header>
 
-  <!-- ✅ IMPORTANT: sidebar rendu AU NIVEAU DU BODY (comme sur ta capture) -->
+  <!-- ✅ SIDEBAR MOBILE -->
   <teleport to="body">
     <transition name="zs-sb">
       <div v-if="sidebarOpen" class="zs-sb-backdrop" @click.self="closeSidebar">
@@ -342,7 +389,7 @@ watch(
               </span>
               <div class="min-width-0">
                 <div class="zs-sb-title zs-ellipsis3">MBOLAFY</div>
-                <div class="zs-sb-sub zs-ellipsis3">Admin • Ventes & Livraison</div>
+                <div class="zs-sb-sub zs-ellipsis3">{{ auth.isAuthenticated ? userRoleLabel : "Ventes & Livraison" }}</div>
               </div>
             </div>
 
@@ -353,10 +400,14 @@ watch(
 
           <!-- User -->
           <div class="zs-sb-user" v-if="auth.isAuthenticated">
-            <span class="zs-user-dot"></span>
+            <span v-if="userAvatar" class="zs-user-avatar zs-user-avatar--sb">
+              <img :src="userAvatar" alt="avatar" />
+            </span>
+            <span v-else class="zs-user-dot"></span>
+
             <div class="min-width-0">
-              <div class="fw-bold zs-ellipsis3">{{ auth.user?.username }}</div>
-              <div class="small text-muted zs-ellipsis3">Connecté</div>
+              <div class="fw-bold zs-ellipsis3">{{ displayName }}</div>
+              <div class="small text-muted zs-ellipsis3">{{ userRoleLabel }}</div>
             </div>
           </div>
 
@@ -366,7 +417,6 @@ watch(
               <i class="fa-solid fa-bars me-2 text-primary"></i> Navigation
             </div>
 
-            <!-- ✅ Tous les menus -->
             <button
               v-for="m in menus"
               :key="m.to"
@@ -417,7 +467,12 @@ watch(
             </template>
 
             <template v-else>
-              <!-- Config dynamique -->
+              <button class="zs-sb-link" type="button" @click="goTo('/profil')">
+                <span class="zs-sb-ico"><i class="fa-solid fa-user-pen"></i></span>
+                <span class="zs-sb-label">Mon profil</span>
+                <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
+              </button>
+
               <div class="zs-sb-minihead d-flex align-items-center justify-content-between">
                 <div class="small text-muted fw-bold">Configuration</div>
                 <div class="small text-muted" v-if="configLoading">...</div>
@@ -470,8 +525,8 @@ watch(
   </teleport>
 </template>
 
-<!-- ✅ NAVBAR (scoped) -->
 <style scoped>
+/* (identique à ta version — inchangé) */
 .zs-nav-wrap{
   position: sticky;
   top: 0;
@@ -571,12 +626,32 @@ watch(
 .zs-nav-item.active .zs-nav-ico i{ transform: translateY(-1px); }
 
 .zs-nav-right{ padding-top: 10px; }
+
+.zs-user{
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.65);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+}
 .zs-user-dot{
   width: 8px; height: 8px; border-radius: 999px;
   background: rgba(25,135,84,1);
   box-shadow: 0 0 0 4px rgba(25,135,84,.14);
 }
-.zs-user-name{ font-weight: 900; color: rgba(15,23,42,.72); }
+.zs-user-avatar{
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.80);
+  flex: 0 0 auto;
+}
+.zs-user-avatar img{ width:100%; height:100%; object-fit:cover; }
+
+.zs-user-name{ font-weight: 950; color: rgba(15,23,42,.78); font-size: .86rem; }
+.zs-user-sub{ font-size: .70rem; color: rgba(15,23,42,.55); font-weight: 800; margin-top: 2px; }
 
 .zs-btn{ border-radius: 14px; }
 .zs-btn-neo{ box-shadow: 0 10px 18px rgba(0,0,0,.06); }
@@ -598,6 +673,24 @@ watch(
   object-fit: cover;
   border: 1px solid rgba(0,0,0,.08);
 }
+.zs-dd-ico{
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.80);
+  flex: 0 0 auto;
+}
+.zs-dd-avatar{
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,.08);
+}
 
 .zs-ellipsis{ max-width: 210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .min-width-0{ min-width:0; }
@@ -609,11 +702,10 @@ watch(
 }
 </style>
 
-<!-- ✅ Sidebar/backdrop GLOBAL (non-scoped) -->
 <style>
+/* (identique à ta version — inchangé) */
 .zs-no-scroll{ overflow: hidden !important; }
 
-/* Backdrop (au-dessus de tout) */
 .zs-sb-backdrop{
   position: fixed;
   inset: 0;
@@ -624,12 +716,11 @@ watch(
   justify-content:flex-start;
 }
 
-/* Sidebar 75% */
 .zs-sb{
   width: 75vw;
   max-width: 420px;
   height: 100%;
-  background: rgba(255,255,255,.88); /* ✅ blanc un peu transparent */
+  background: rgba(255,255,255,.88);
   backdrop-filter: blur(14px);
   border-right: 1px solid rgba(0,0,0,.08);
   box-shadow: 18px 0 40px rgba(0,0,0,.18);
@@ -669,6 +760,12 @@ watch(
   align-items:center;
   gap: 10px;
   border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.zs-user-avatar--sb{
+  width: 34px;
+  height: 34px;
+  border-radius: 14px;
 }
 
 .zs-sb-body{
@@ -736,10 +833,8 @@ watch(
   background: rgba(255,255,255,.70);
 }
 
-/* Transition */
 .zs-sb-enter-active, .zs-sb-leave-active{ transition: opacity .18s ease; }
 .zs-sb-enter-from, .zs-sb-leave-to{ opacity: 0; }
-
 .zs-sb-enter-active .zs-sb, .zs-sb-leave-active .zs-sb{ transition: transform .18s ease; }
 .zs-sb-enter-from .zs-sb{ transform: translateX(-14px); }
 .zs-sb-leave-to .zs-sb{ transform: translateX(-14px); }

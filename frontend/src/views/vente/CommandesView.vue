@@ -1,3 +1,4 @@
+<!-- frontend/src/views/vente/CommandesView.vue -->
 <template>
   <div class="zs-root">
     <AppNavbar />
@@ -61,16 +62,29 @@
               <span class="ms-2 d-none d-sm-inline">Nouvelle</span>
             </button>
 
-            <button class="btn btn-outline-secondary zs-btn zs-btn-neo" @click="refreshList" :disabled="loading" title="Rafraîchir">
+            <button
+              class="btn btn-outline-secondary zs-btn zs-btn-neo"
+              @click="refreshList"
+              :disabled="loading"
+              title="Rafraîchir"
+            >
               <i class="fa-solid fa-rotate"></i>
               <span class="ms-2 d-none d-sm-inline">Rafraîchir</span>
             </button>
 
             <div class="btn-group zs-btn-neo" role="group" aria-label="Affichage">
-              <button class="btn zs-btn" :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'" @click="viewMode = 'table'">
+              <button
+                class="btn zs-btn"
+                :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="viewMode = 'table'"
+              >
                 <i class="fa-solid fa-table"></i>
               </button>
-              <button class="btn zs-btn" :class="viewMode === 'card' ? 'btn-primary' : 'btn-outline-primary'" @click="viewMode = 'card'">
+              <button
+                class="btn zs-btn"
+                :class="viewMode === 'card' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="viewMode = 'card'"
+              >
                 <i class="fa-solid fa-id-card-clip"></i>
               </button>
             </div>
@@ -243,7 +257,14 @@
                       <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openEditModal(c)" title="Éditer">
                         <i class="fa-solid fa-pen-to-square"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="removeCommande(c.id)" title="Supprimer">
+
+                      <!-- ✅ DELETE : désactivé si pas ADMIN -->
+                      <button
+                        class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo"
+                        @click="removeCommande(c.id)"
+                        :disabled="!canDelete || loading"
+                        :title="!canDelete ? 'Suppression réservée à ADMIN' : 'Supprimer'"
+                      >
                         <i class="fa-solid fa-trash"></i>
                       </button>
                     </div>
@@ -308,7 +329,14 @@
                           <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openEditModal(c)" title="Éditer">
                             <i class="fa-solid fa-pen-to-square"></i>
                           </button>
-                          <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="removeCommande(c.id)" title="Supprimer">
+
+                          <!-- ✅ DELETE : désactivé si pas ADMIN -->
+                          <button
+                            class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo"
+                            @click="removeCommande(c.id)"
+                            :disabled="!canDelete || loading"
+                            :title="!canDelete ? 'Suppression réservée à ADMIN' : 'Supprimer'"
+                          >
                             <i class="fa-solid fa-trash"></i>
                           </button>
                         </div>
@@ -381,7 +409,14 @@
                     <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openEditModal(c)">
                       <i class="fa-solid fa-pen-to-square me-1"></i> Éditer
                     </button>
-                    <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="removeCommande(c.id)">
+
+                    <!-- ✅ DELETE : désactivé si pas ADMIN -->
+                    <button
+                      class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo"
+                      @click="removeCommande(c.id)"
+                      :disabled="!canDelete || loading"
+                      :title="!canDelete ? 'Suppression réservée à ADMIN' : 'Supprimer'"
+                    >
                       <i class="fa-solid fa-trash me-1"></i> Supprimer
                     </button>
                   </div>
@@ -883,6 +918,13 @@ import { ref, computed, onMounted, watch } from "vue";
 import AppNavbar from "@/components/AppNavbar.vue";
 import { VenteAPI, type ArticleSuggest, type ClientSuggest, type LieuSuggest, type PageOption } from "@/services/vente";
 
+/* ✅ permissions */
+import { useAuthStore } from "@/stores/auth";
+import { can as canPerm } from "@/helpers/roles";
+
+const auth = useAuthStore();
+const canDelete = computed(() => canPerm(auth.user, "commandes.delete"));
+
 const loading = ref(false);
 const error = ref("");
 
@@ -1298,6 +1340,12 @@ async function submit() {
 }
 
 async function removeCommande(id: number) {
+  // ✅ garde-fou front (même si bouton désactivé)
+  if (!canDelete.value) {
+    alert("Accès refusé : seule un compte ADMIN peut supprimer une commande.");
+    return;
+  }
+
   if (!confirm("Supprimer cette commande ?")) return;
   await VenteAPI.remove(id);
   if (commandes.value.length <= 1 && page.value > 1) page.value -= 1;
@@ -1448,23 +1496,23 @@ onMounted(() => {
 
 /* ✅ suggestions (FIX: éviter que la miniature soit “coupée” par le border-radius) */
 .zs-suggest{
-  z-index: 80;                /* au-dessus du contenu du modal */
+  z-index: 80;
   border-radius: 14px;
   border: 1px solid var(--zs-border);
-  overflow: hidden;           /* on garde le radius propre */
+  overflow: hidden;
   background: rgba(255,255,255,.96);
-  padding: 6px;               /* ✅ inset: plus collé au bord => plus de coupe */
+  padding: 6px;
 }
 .zs-suggest .list-group-item{
   border: 0;
-  border-radius: 12px;        /* ✅ item arrondi, pas collé au bord */
-  padding: .55rem .65rem;     /* ✅ marge interne */
+  border-radius: 12px;
+  padding: .55rem .65rem;
 }
 .zs-suggest .list-group-item + .list-group-item{
-  margin-top: 6px;            /* ✅ séparation douce */
+  margin-top: 6px;
 }
 .zs-suggest .list-group-item:active{
-  transform: translateY(0);   /* éviter l’effet qui “mange” le coin */
+  transform: translateY(0);
 }
 
 /* thumbs */
@@ -1479,7 +1527,7 @@ onMounted(() => {
 }
 .zs-thumb img{ width: 100%; height: 100%; object-fit: cover; display:block; }
 .zs-thumb-sm{
-  width: 44px; height: 44px;      /* ✅ un peu plus grand et lisible */
+  width: 44px; height: 44px;
   border-radius: 12px;
 }
 
@@ -1501,7 +1549,7 @@ onMounted(() => {
   font-size: .72rem;
 }
 
-/* STATUS (réutilisable encaissement-like) */
+/* STATUS */
 .zs-status{
   position: relative;
   display:inline-flex;
@@ -1533,7 +1581,7 @@ onMounted(() => {
 .zs-st-cancel { color:#b91c1c; background: linear-gradient(180deg, rgba(239,68,68,.20), rgba(255,255,255,.82)); border-color: rgba(239,68,68,.28); }
 .zs-st-neutral{ color:#334155; background: rgba(255,255,255,.80); }
 
-/* ===== TABLE MODE (GRID comme Encaissement) ===== */
+/* ===== TABLE MODE ===== */
 .zs-list{ background: rgba(255,255,255,.70); }
 .zs-list-head{
   display:grid;
@@ -1611,7 +1659,7 @@ onMounted(() => {
   .zs-subval{ min-width: 0; }
 }
 
-/* ===== Card mode (GRID comme Encaissement) ===== */
+/* ===== Card mode ===== */
 .zs-cards{ background: rgba(255,255,255,.70); }
 .zs-cards-grid{
   display:grid;

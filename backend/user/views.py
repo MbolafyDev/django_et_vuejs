@@ -1,19 +1,24 @@
+# user/views.py
+from __future__ import annotations
+
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import RegisterSerializer
-
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import (
+    RegisterSerializer,
+    MeSerializer,
+    UpdateProfileSerializer,
+    AdminSetRoleSerializer,
+)
 
 User = get_user_model()
 
@@ -34,19 +39,19 @@ def register(request):
 @permission_classes([AllowAny])
 def login(request):
     """
-    Login utilisateur avec username + password
+    ✅ Login avec email + password
     Retourne access + refresh token JWT
     """
-    username = request.data.get("username")
+    email = (request.data.get("email") or "").strip().lower()
     password = request.data.get("password")
 
-    if not username or not password:
+    if not email or not password:
         return Response(
-            {"detail": "Username et mot de passe requis."},
+            {"detail": "Email et mot de passe requis."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    user = authenticate(username=username, password=password)
+    user = authenticate(request, email=email, password=password)
 
     if not user:
         return Response(
@@ -66,13 +71,7 @@ def login(request):
         {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-            },
+            "user": MeSerializer(user, context={"request": request}).data,
         },
         status=status.HTTP_200_OK
     )
@@ -81,15 +80,52 @@ def login(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me(request):
-    u = request.user
     return Response(
-        {
-            "id": u.id,
-            "username": u.username,
-            "email": u.email,
-            "first_name": u.first_name,
-            "last_name": u.last_name,
-        },
+        MeSerializer(request.user, context={"request": request}).data,
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    """
+    ✅ Modifier son profil (système d'authentification => modifier profile)
+    - role non modifiable ici
+    """
+    serializer = UpdateProfileSerializer(
+        request.user,
+        data=request.data,
+        partial=(request.method == "PATCH"),
+        context={"request": request},
+    )
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(
+        {"message": "Profil mis à jour", "user": MeSerializer(request.user, context={"request": request}).data},
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAdminUser])
+def admin_set_role(request, user_id: int):
+    """
+    ✅ Seul l'admin peut changer le role d'un user
+    """
+    try:
+        target = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return Response({"detail": "Utilisateur introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = AdminSetRoleSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    target.role = serializer.validated_data["role"]
+    target.save(update_fields=["role"])
+
+    return Response(
+        {"message": "Rôle mis à jour", "user": MeSerializer(target, context={"request": request}).data},
         status=status.HTTP_200_OK
     )
 
@@ -99,28 +135,19 @@ def me(request):
 def forgot_password(request):
     email = (request.data.get("email") or "").strip().lower()
     if not email:
-        return Response(
-            {"email": ["L'email est obligatoire."]},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"email": ["L'email est obligatoire."]}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         user = User.objects.get(email__iexact=email)
     except User.DoesNotExist:
-        # sécurité: ne pas révéler si l'email existe
-        return Response(
-            {"message": "If the email exists, a reset link was sent."},
-            status=status.HTTP_200_OK
-        )
+        return Response({"message": "If the email exists, a reset link was sent."}, status=status.HTTP_200_OK)
 
     token = default_token_generator.make_token(user)
     uid = str(user.pk)
 
-    # lien front (dev)
     frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
     reset_link = f"{frontend_url}/reset-password?uid={uid}&token={token}"
 
-    # email si configuré
     if getattr(settings, "EMAIL_HOST", None):
         send_mail(
             "Password reset",
@@ -144,10 +171,7 @@ def reset_password(request):
     new_password = request.data.get("new_password")
 
     if not uid or not token or not new_password:
-        return Response(
-            {"detail": "uid, token, new_password are required"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"detail": "uid, token, new_password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         user = User.objects.get(pk=uid)
@@ -161,6 +185,7 @@ def reset_password(request):
     user.save()
     return Response({"message": "Password updated"}, status=status.HTTP_200_OK)
 
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout(request):
@@ -172,12 +197,6 @@ def logout(request):
         token = RefreshToken(refresh_token)
         token.blacklist()
     except Exception:
-        return Response(
-            {"detail": "Token invalide ou manquant."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({"detail": "Token invalide ou manquant."}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response(
-        {"message": "Déconnexion réussie."},
-        status=status.HTTP_200_OK
-    )
+    return Response({"message": "Déconnexion réussie."}, status=status.HTTP_200_OK)

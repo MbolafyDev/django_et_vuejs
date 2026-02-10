@@ -1,61 +1,64 @@
 # project/urls.py (racine)
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
 from django.conf import settings
 from django.conf.urls.static import static
 
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request):
     return Response({"status": "ok"})
 
+
 urlpatterns = [
+    # Admin Django
     path("admin/", admin.site.urls),
 
-    # ✅ Health direct (sans include)
+    # Health check
     path("api/health/", health, name="api_health"),
 
-    # ✅ Auth JWT
-    path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-
-    # # ✅ Users app (tes endpoints: me, logout, register, etc.)
+    # =========================
+    # AUTHENTIFICATION (CUSTOM)
+    # =========================
+    # login (email), register, logout, me, profile, roles, reset password
     path("api/auth/", include("user.urls")),
 
-    # ✅ Clients app (CRUD clients)
+    # =========================
+    # APPS METIER
+    # =========================
+
+    # Clients
     path("api/", include("client.urls")),
 
-    # pour les articles
+    # Articles
     path("api/", include("article.urls")),
 
-    # livraison
+    # Livraison
     path("api/livraison/", include("livraison.urls")),
 
-    # achats
+    # Achats
     path("api/achats/", include("achats.urls")),
 
-    # ventes
+    # Ventes
     path("api/vente/", include("vente.urls")),
 
-    # encaissement
+    # Encaissement
     path("api/encaissement/", include("encaissement.urls")),
 
-    # configuration
+    # Configuration
     path("api/configuration/", include("configuration.urls")),
 
-    # facturation
+    # Facturation
     path("api/facturation/", include("facturation.urls")),
 
-    # dashboard
+    # Dashboard
     path("api/dashboard/", include("dashboard.urls")),
 
-    # livraison
-    # ✅ AJOUT ICI
+    # Conflit livraison
     path("api/conflivraison/", include("conflivraison.urls")),
-
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

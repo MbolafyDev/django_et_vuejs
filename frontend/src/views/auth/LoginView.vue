@@ -8,15 +8,14 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const username = ref("");
+const email = ref("");
 const password = ref("");
 const error = ref("");
 
 const submit = async () => {
   error.value = "";
-
   try {
-    await auth.login(username.value, password.value);
+    await auth.login(email.value, password.value);
 
     const next =
       typeof route.query.next === "string" && route.query.next
@@ -44,13 +43,13 @@ const submit = async () => {
 
             <form @submit.prevent="submit">
               <div class="mb-3">
-                <label class="form-label">Nom d’utilisateur</label>
+                <label class="form-label">Adresse email</label>
                 <input
-                  v-model="username"
-                  type="text"
+                  v-model="email"
+                  type="email"
                   class="form-control"
-                  placeholder="Entrez votre nom d’utilisateur"
-                  autocomplete="username"
+                  placeholder="ex: nom@gmail.com"
+                  autocomplete="email"
                   :disabled="auth.loading"
                   required
                 />
