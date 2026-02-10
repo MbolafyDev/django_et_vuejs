@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ facture.numero_affiche }} - {{ facture.type_facture }}</title>
+  <style>
+    @page { size: A4; margin: 16mm; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color:#111; }
+    .row { display:flex; justify-content:space-between; gap:16px; }
+    .muted { color:#666; }
+    .title { font-size: 18px; font-weight: 700; margin: 0; }
+    .badge { display:inline-block; padding:4px 8px; border-radius: 999px; font-size: 11px; font-weight:700; }
+    .badge.facture { background:#e7f7ee; color:#137a3a; }
+    .badge.proforma { background:#fff3cd; color:#7a5b00; }
+    .box { border:1px solid #ddd; border-radius:10px; padding:10px; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border-bottom:1px solid #eee; padding:8px 6px; vertical-align:top; }
+    th { text-align:left; font-size:11px; color:#444; }
+    .right { text-align:right; }
+    .totals { margin-top:10px; display:flex; justify-content:flex-end; }
+    .totals table { width: 260px; }
+    .footer { margin-top:18px; font-size:11px; color:#555; display:flex; justify-content:space-between; gap:16px; }
+    .logo { max-height: 56px; max-width: 160px; object-fit: contain; }
+    .sig { width: 240px; text-align:right; }
+    .sig img { max-height:60px; max-width:200px; object-fit:contain; display:block; margin-left:auto; }
+  </style>
+</head>
+
+<body>
+  <div class="row">
+    <div>
+      {% if commande.page.logo %}
+        <img class="logo" src="{{ commande.page.logo.url }}" alt="Logo" />
+      {% endif %}
+      <div class="muted" style="margin-top:6px;">
+        <div><strong>{{ commande.page.nom|default:"FACTURATION" }}</strong></div>
+      </div>
+    </div>
+
+    <div style="text-align:right;">
+      <p class="title">{{ facture.type_facture }}</p>
+      <span class="badge {% if facture.type_facture == 'FACTURE' %}facture{% else %}proforma{% endif %}">
+        {{ facture.type_facture }}
+      </span>
+      <div style="margin-top:8px;">
+        <div><strong>N° :</strong> {{ facture.numero_affiche }}</div>
+        <div><strong>Date :</strong> {{ facture.date_emission|date:"d/m/Y H:i" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <hr style="border:none;border-top:1px solid #ddd; margin:12px 0;" />
+
+  <div class="row">
+    <div class="box" style="flex:1;">
+      <div style="font-weight:700; margin-bottom:6px;">Client</div>
+      <div><strong>Nom :</strong> {{ commande.client_nom|default:"-" }}</div>
+      <div><strong>Contact :</strong> {{ commande.client_contact|default:"-" }}</div>
+      <div><strong>Adresse :</strong> {{ commande.client_adresse|default:"-" }}</div>
+    </div>
+
+    <div class="box" style="flex:1;">
+      <div style="font-weight:700; margin-bottom:6px;">Livraison</div>
+      <div><strong>Lieu :</strong> {{ commande.lieu_livraison.nom|default:"-" }}</div>
+      <div><strong>Précision :</strong> {{ commande.precision_lieu|default:"-" }}</div>
+      <div><strong>Date livraison :</strong>
+        {% if commande.date_livraison %}{{ commande.date_livraison|date:"d/m/Y" }}{% else %}-{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:90px;">Réf</th>
+        <th>Produit</th>
+        <th class="right" style="width:80px;">Qté</th>
+        <th class="right" style="width:110px;">PU</th>
+        <th class="right" style="width:120px;">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in commande.lignes.all %}
+        <tr>
+          <td>{{ l.article.reference|default:"-" }}</td>
+          <td>{{ l.article.nom_produit|default:"-" }}</td>
+          <td class="right">{{ l.quantite|default:0 }}</td>
+          <td class="right">{{ l.prix_vente_unitaire|default:0|floatformat:0 }}</td>
+          <td class="right">{{ l.sous_total|default:l.total_ligne|default:0 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr>
+        <td class="right muted">Sous-total</td>
+        <td class="right"><strong>{{ commande.total_articles|default:0 }}</strong></td>
+      </tr>
+      <tr>
+        <td class="right muted">Frais livraison</td>
+        <td class="right"><strong>{{ commande.frais_livraison.frais_final|default:0 }}</strong></td>
+      </tr>
+      <tr>
+        <td class="right" style="font-size:14px;"><strong>TOTAL</strong></td>
+        <td class="right" style="font-size:14px;"><strong>{{ commande.total_commande|default:0 }}</strong></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div>
+      <div class="muted">{{ settings_fact.footer_note|default:"Merci pour votre confiance." }}</div>
+      <div class="muted" style="margin-top:6px;">Imprimé le {% now "d/m/Y H:i" %}</div>
+    </div>
+
+    <div class="sig">
+      <div style="font-weight:700;">Signature</div>
+      {% if settings_fact.signature_image %}
+        <img src="{{ settings_fact.signature_image.url }}" alt="Signature" />
+      {% endif %}
+      <div style="font-weight:700;">{{ settings_fact.signature_nom|default:"" }}</div>
+      <div class="muted">{{ settings_fact.signature_titre|default:"" }}</div>
+    </div>
+  </div>
+</body>
+</html>
