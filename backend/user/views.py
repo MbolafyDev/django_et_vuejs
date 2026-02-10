@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from .serializers import (
     RegisterSerializer,
@@ -90,7 +90,7 @@ def me(request):
 @permission_classes([IsAuthenticated])
 def update_profile(request):
     """
-    ✅ Modifier son profil (système d'authentification => modifier profile)
+    ✅ Modifier son profil
     - role non modifiable ici
     """
     serializer = UpdateProfileSerializer(
@@ -190,13 +190,21 @@ def reset_password(request):
 @permission_classes([IsAuthenticated])
 def logout(request):
     """
-    Déconnexion utilisateur (blacklist du refresh token)
+    ✅ Déconnexion utilisateur:
+    - blacklist le refresh token (si fourni)
     """
+    refresh_token = request.data.get("refresh")
+
+    if not refresh_token:
+        # On autorise quand même la déconnexion côté frontend (suppression storage)
+        return Response({"message": "Déconnexion réussie (client)."}, status=status.HTTP_200_OK)
+
     try:
-        refresh_token = request.data.get("refresh")
         token = RefreshToken(refresh_token)
         token.blacklist()
+    except TokenError:
+        return Response({"detail": "Refresh token invalide ou expiré."}, status=status.HTTP_400_BAD_REQUEST)
     except Exception:
-        return Response({"detail": "Token invalide ou manquant."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Erreur lors de la déconnexion."}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"message": "Déconnexion réussie."}, status=status.HTTP_200_OK)

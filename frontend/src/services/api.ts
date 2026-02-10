@@ -41,12 +41,19 @@ function clearTokens() {
   localStorage.removeItem(REFRESH_KEY);
 }
 
+// ✅ util: détecter erreur réseau/timeout (ne pas “déconnecter” sur un simple lag)
+function isNetworkError(err: any) {
+  return (
+    !err?.response && // pas de response HTTP
+    (err?.code === "ECONNABORTED" || err?.message?.includes("timeout") || err?.message === "Network Error")
+  );
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original: any = err?.config;
 
-    // ✅ Si pas de config => erreur normale
     if (!original) return Promise.reject(err);
 
     // ✅ On refresh uniquement sur 401, et une seule fois par requête
@@ -57,6 +64,7 @@ api.interceptors.response.use(
 
       // Pas de refresh token => on nettoie et on remonte l’erreur
       if (!refresh) {
+        console.warn("[AUTH] 401 + no refresh token => clear tokens");
         clearTokens();
         return Promise.reject(err);
       }
@@ -76,37 +84,49 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        /**
-         * ✅ IMPORTANT : on utilise raw (sans interceptors),
-         * sinon si refresh renvoie 401 => boucle infinie possible.
-         *
-         * Ton endpoint actuel:
-         * POST /api/auth/refresh/ { refresh }
-         * => { access }
-         */
+        console.warn("[AUTH] 401 => trying refresh...");
+
+        // ✅ refresh (raw, sans interceptors)
         const r = await raw.post("auth/refresh/", { refresh });
 
-        const newAccess = r?.data?.access;
+        // ✅ compat: access OU access_token
+        const newAccess = r?.data?.access || r?.data?.access_token || null;
+
+        // ✅ support rotation refresh (si backend renvoie un nouveau refresh)
+        const newRefresh = r?.data?.refresh || r?.data?.refresh_token || null;
+
+        console.warn("[AUTH] refresh response:", r?.data);
 
         if (!newAccess) {
-          // refresh répondu mais pas d’access => on force logout
+          console.error("[AUTH] refresh OK but no access in response => clear tokens");
           flushQueue(null);
           clearTokens();
           return Promise.reject(err);
         }
 
         localStorage.setItem(ACCESS_KEY, newAccess);
+        if (newRefresh) {
+          localStorage.setItem(REFRESH_KEY, newRefresh);
+        }
 
-        // ✅ on libère toutes les requêtes en attente
         flushQueue(newAccess);
 
-        // ✅ on rejoue la requête originale
+        // ✅ rejouer la requête originale
         original.headers = original.headers || {};
         original.headers.Authorization = `Bearer ${newAccess}`;
 
         return api(original);
       } catch (e: any) {
-        // ✅ refresh failed (refresh expiré, réseau, timeout...)
+        // ✅ si c'est juste réseau/timeout => on ne supprime pas les tokens (évite déconnexion)
+        if (isNetworkError(e)) {
+          console.warn("[AUTH] refresh failed due to network/timeout => keep tokens");
+          flushQueue(null);
+          // on renvoie l'erreur (UI peut afficher "réseau")
+          return Promise.reject(e);
+        }
+
+        // ✅ refresh token invalide/expiré => là on doit déconnecter
+        console.error("[AUTH] refresh failed => clear tokens", e?.response?.status, e?.response?.data);
         flushQueue(null);
         clearTokens();
         return Promise.reject(e);
@@ -115,7 +135,6 @@ api.interceptors.response.use(
       }
     }
 
-    // ✅ autre erreur => normal
     return Promise.reject(err);
   }
 );

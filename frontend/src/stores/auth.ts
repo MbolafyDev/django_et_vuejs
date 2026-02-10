@@ -11,10 +11,8 @@ export type User = {
   first_name?: string;
   last_name?: string;
 
-  // ✅ role
   role?: UserRole;
 
-  // ✅ champs profil
   photo_profil_url?: string | null;
   photo_couverture_url?: string | null;
   adresse?: string;
@@ -42,6 +40,14 @@ function setTokens(access: string, refresh: string) {
   localStorage.setItem(REFRESH_KEY, refresh);
 }
 
+// ✅ util réseau
+function isNetworkError(err: any) {
+  return (
+    !err?.response &&
+    (err?.code === "ECONNABORTED" || err?.message?.includes("timeout") || err?.message === "Network Error")
+  );
+}
+
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
@@ -54,14 +60,12 @@ export const useAuthStore = defineStore("auth", {
     fullName: (state) =>
       state.user ? `${state.user.first_name || ""} ${state.user.last_name || ""}`.trim() : "",
 
-    // ✅ helpers role
     isAdmin: (state) => state.user?.role === "ADMIN",
     isCommerciale: (state) => state.user?.role === "COMMERCIALE",
     isCommunityManager: (state) => state.user?.role === "COMMUNITY_MANAGER",
   },
 
   actions: {
-    // ✅ restauration de session au refresh
     async initFromStorage() {
       const access = getAccessToken();
       const refresh = getRefreshToken();
@@ -71,15 +75,15 @@ export const useAuthStore = defineStore("auth", {
         return;
       }
 
-      /**
-       * ✅ IMPORTANT
-       * Même si access est expiré, l'interceptor de api.ts va refresh automatiquement
-       * donc fetchMe() ne doit plus provoquer une déconnexion "au bout de quelques minutes".
-       */
       try {
         await this.fetchMe();
-      } catch (e) {
-        // Si refresh aussi invalide => on nettoie.
+      } catch (e: any) {
+        // ✅ si réseau/timeout: ne pas logout (sinon “déconnexion automatique”)
+        if (isNetworkError(e)) {
+          console.warn("[AUTH] initFromStorage fetchMe network error => keep tokens, user stays null for now");
+          return;
+        }
+        // ✅ sinon refresh invalide, etc.
         this.logoutLocalOnly();
       }
     },
@@ -92,7 +96,6 @@ export const useAuthStore = defineStore("auth", {
       this.lastError = "";
     },
 
-    // ✅ LOGIN PAR EMAIL
     async login(email: string, password: string) {
       this.loading = true;
       this.lastError = "";
@@ -121,7 +124,6 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async fetchMe() {
-      // ✅ si access expiré => api.ts refresh et rejoue automatiquement
       const res = await api.get<User>("auth/me/");
       this.user = res.data;
     },
@@ -142,7 +144,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // ✅ REGISTER: first_name, last_name, username, email, password
     async register(payload: {
       first_name: string;
       last_name: string;
@@ -164,7 +165,6 @@ export const useAuthStore = defineStore("auth", {
       await api.post("auth/reset-password/", { uid, token, new_password });
     },
 
-    // ✅ UPDATE PROFILE (multipart) : adresse, téléphone, sexe, photo profil/couverture
     async updateProfile(payload: {
       first_name?: string;
       last_name?: string;
@@ -189,7 +189,6 @@ export const useAuthStore = defineStore("auth", {
         if (payload.photo_profil) fd.append("photo_profil", payload.photo_profil);
         if (payload.photo_couverture) fd.append("photo_couverture", payload.photo_couverture);
 
-        // PATCH /auth/profile/
         const res = await api.patch<{ message: string; user: User }>("auth/profile/", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
