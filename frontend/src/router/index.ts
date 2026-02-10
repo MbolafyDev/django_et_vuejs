@@ -30,6 +30,9 @@ import FacturesView from "@/views/facturation/FacturesView.vue";
 import ConflivraisonListView from "@/views/conflivraison/ConflivraisonListView.vue";
 import ProfileView from "@/views/auth/ProfileView.vue";
 
+// ✅ NEW: Charges
+import ChargesView from "@/views/charge/ChargesView.vue";
+
 // ✅ guards
 import { requireRole } from "@/router/guards/roles";
 import { ROLES, defaultRouteForRole } from "@/helpers/roles";
@@ -45,42 +48,143 @@ const routes = [
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
 
   // Dashboard
-  { path: "/dashboard", name: "dashboard", component: DashboardView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]) },
-  { path: "/dashboard-stats", name: "dashboard-stats", component: DashboardStatsView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]) },
+  {
+    path: "/dashboard",
+    name: "dashboard",
+    component: DashboardView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]),
+  },
+  {
+    path: "/dashboard-stats",
+    name: "dashboard-stats",
+    component: DashboardStatsView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]),
+  },
 
   // Base
   { path: "/profil", name: "profil", component: ProfileView, meta: { requiresAuth: true } },
 
+  // ✅ NEW: Charges (ADMIN + COMMERCIALE + CM si tu veux)
+  {
+    path: "/charges",
+    name: "charges",
+    component: ChargesView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]),
+  },
+
   // Clients (auth + roles)
-  { path: "/clients", name: "clients", component: ClientsView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER, ROLES.COMMERCIALE]) },
+  {
+    path: "/clients",
+    name: "clients",
+    component: ClientsView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER, ROLES.COMMERCIALE]),
+  },
 
   // Articles (CM + ADMIN)
-  { path: "/articles", name: "articles", component: ArticlesView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]) },
+  {
+    path: "/articles",
+    name: "articles",
+    component: ArticlesView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]),
+  },
 
-  // Achats (ADMIN seulement par défaut — si tu veux CM aussi, ajoute ROLES.COMMUNITY_MANAGER)
-  { path: "/achats", name: "achats", component: AchatsView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN]) },
+  // Achats (ADMIN seulement par défaut)
+  {
+    path: "/achats",
+    name: "achats",
+    component: AchatsView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
 
-  // Ventes (COMMERCIALE + ADMIN + (optionnel CM))
-  { path: "/commandes", name: "commandes", component: CommandesView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]) },
+  // Ventes
+  {
+    path: "/commandes",
+    name: "commandes",
+    component: CommandesView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]),
+  },
 
   // Encaissement
-  { path: "/encaissement", name: "encaissement_list", component: EncaissementListView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]) },
-  { path: "/encaissement/encaisser/:id", name: "encaissement_encaisser", component: EncaisserCommandeView, props: true, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]) },
+  {
+    path: "/encaissement",
+    name: "encaissement_list",
+    component: EncaissementListView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]),
+  },
+  {
+    path: "/encaissement/encaisser/:id",
+    name: "encaissement_encaisser",
+    component: EncaisserCommandeView,
+    props: true,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]),
+  },
 
   // Livraison (paramètres) — ADMIN
-  { path: "/parametres/livraison/lieux", name: "livraison_lieux", component: LivraisonLieuxView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN]) },
-  { path: "/parametres/livraison/frais", name: "livraison_frais", component: LivraisonFraisView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN]) },
+  {
+    path: "/parametres/livraison/lieux",
+    name: "livraison_lieux",
+    component: LivraisonLieuxView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
+  {
+    path: "/parametres/livraison/frais",
+    name: "livraison_frais",
+    component: LivraisonFraisView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
 
-  // Conflivraison (view CM/Admin — commerciale aussi si besoin)
-  { path: "/conflivraison", name: "conflivraison", component: ConflivraisonListView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]) },
+  // Conflivraison
+  {
+    path: "/conflivraison",
+    name: "conflivraison",
+    component: ConflivraisonListView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]),
+  },
 
-  // Factures (tout le monde auth)
-  { path: "/factures", name: "factures", component: FacturesView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER, ROLES.COMMERCIALE]) },
+  // Factures
+  {
+    path: "/factures",
+    name: "factures",
+    component: FacturesView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER, ROLES.COMMERCIALE]),
+  },
 
   // Configuration (ADMIN)
-  { path: "/configuration", name: "configuration_dashboard", component: ConfigurationDashboardView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN]) },
-  { path: "/configuration/pages", name: "configuration_pages", component: ConfigurationPagesView, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN]) },
-  { path: "/configuration/pages/new", name: "configuration_pages_new", component: ConfigurationPageFormView, props: { mode: "create" }, meta: { requiresAuth: true }, beforeEnter: requireRole([ROLES.ADMIN]) },
+  {
+    path: "/configuration",
+    name: "configuration_dashboard",
+    component: ConfigurationDashboardView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
+  {
+    path: "/configuration/pages",
+    name: "configuration_pages",
+    component: ConfigurationPagesView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
+  {
+    path: "/configuration/pages/new",
+    name: "configuration_pages_new",
+    component: ConfigurationPageFormView,
+    props: { mode: "create" },
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
   {
     path: "/configuration/pages/:id/edit",
     name: "configuration_pages_edit",
@@ -103,8 +207,12 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore();
 
   // ✅ si token présent, on recharge l’utilisateur
-  if (!auth.user && localStorage.getItem("access_token")) {
+  // IMPORTANT: si ton store utilise "access_token" en clé, garde ça.
+  const hasAccess = !!localStorage.getItem("access_token");
+
+  if (!auth.user && hasAccess) {
     try {
+      // fetchMe doit gérer le refresh si access expiré (sinon tu seras renvoyé login)
       await auth.fetchMe();
     } catch (e) {
       console.warn("fetchMe failed => redirect login", e);

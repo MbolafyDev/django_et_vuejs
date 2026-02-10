@@ -12,15 +12,32 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const menus = [
-  { to: "/commandes", label: "Commandes", icon: "fa-solid fa-receipt" },
-  { to: "/factures", label: "Facturation", icon: "fa-solid fa-file-invoice-dollar" },
-  { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" },
-  { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" },
-  { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" },
-  { to: "/articles", label: "Articles", icon: "fa-solid fa-box" },
-  { to: "/clients", label: "Clients", icon: "fa-solid fa-users" },
-];
+/* ===========================
+   ✅ Role helpers
+=========================== */
+const isAdmin = computed(() => auth.user?.role === "ADMIN");
+
+/* ===========================
+   ✅ Menus (avec Charges ADMIN ONLY)
+=========================== */
+const menus = computed(() => {
+  const base = [
+    { to: "/commandes", label: "Commandes", icon: "fa-solid fa-receipt" },
+    { to: "/factures", label: "Facturation", icon: "fa-solid fa-file-invoice-dollar" },
+    { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" },
+    { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" },
+    { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" },
+    { to: "/articles", label: "Articles", icon: "fa-solid fa-box" },
+    { to: "/clients", label: "Clients", icon: "fa-solid fa-users" },
+  ];
+
+  // ✅ Charges visible uniquement ADMIN
+  if (isAdmin.value) {
+    base.splice(2, 0, { to: "/charges", label: "Charges", icon: "fa-solid fa-coins" }); // après Facturation
+  }
+
+  return base;
+});
 
 const isActive = (path: string) => route.path.startsWith(path);
 

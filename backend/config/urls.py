@@ -61,4 +61,7 @@ urlpatterns = [
 
     # Conflit livraison
     path("api/conflivraison/", include("conflivraison.urls")),
+
+    # charges
+    path("api/charge/", include("charge.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

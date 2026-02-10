@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "configuration",
     "facturation.apps.FacturationConfig",
     "conflivraison",
+    "charge",
 ]
 
 # settings.py

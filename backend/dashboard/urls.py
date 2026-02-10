@@ -9,4 +9,8 @@ urlpatterns = [
     path("top-articles/", views.dashboard_top_articles, name="dashboard-top-articles"),
     path("payment-mix/", views.dashboard_payment_mix, name="dashboard-payment-mix"),
     path("sales-by-page/", views.dashboard_sales_by_page, name="dashboard-sales-by-page"),
+
+     # ✅ nouveaux
+    path("articles-sortants/", views.dashboard_articles_sortants),
+    path("articles-entrants/", views.dashboard_articles_entrants),
 ]
