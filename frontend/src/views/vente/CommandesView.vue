@@ -494,6 +494,7 @@
             </div>
           </div>
 
+          <!-- ✅ actions déjà dans le footer -->
           <div class="modal-footer">
             <button class="btn btn-outline-secondary zs-btn" @click="closeViewModal">Fermer</button>
             <button class="btn btn-warning zs-btn" @click="openEditModal(selectedCommande); closeViewModal()">
@@ -504,7 +505,7 @@
       </div>
     </div>
 
-    <!-- MODAL : CREATE / EDIT (inchangé) -->
+    <!-- MODAL : CREATE / EDIT -->
     <div v-if="showFormModal" class="modal fade show d-block zs-backdrop" tabindex="-1" @click.self="closeFormModal">
       <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content zs-modal">
@@ -730,6 +731,7 @@
                             />
                           </div>
 
+                          <!-- ✅ autosuggestion articles -->
                           <div v-if="articleSuggestions.length" class="zs-suggest list-group position-absolute w-100 shadow-sm mt-1">
                             <button
                               v-for="a in articleSuggestions"
@@ -846,24 +848,29 @@
                   </div>
                 </div>
 
-                <!-- actions -->
-                <div class="d-grid mt-3">
-                  <button class="btn btn-success zs-btn zs-btn-neo" @click="submit" :disabled="loading || !canSubmit">
-                    <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                    <i v-else class="fa-solid" :class="editingId ? 'fa-pen-to-square' : 'fa-floppy-disk'"></i>
-                    <span class="ms-2">{{ editingId ? "Mettre à jour" : "Enregistrer" }}</span>
-                  </button>
-
-                  <button v-if="editingId" class="btn btn-outline-secondary mt-2 zs-btn zs-btn-neo" @click="cancelEdit" :disabled="loading">
-                    Annuler édition
-                  </button>
-                </div>
+                <!-- ✅ (retiré du body) actions déplacées vers le footer -->
+                <!-- (rien supprimé fonctionnellement : seulement déplacé visuellement) -->
               </div>
             </div>
           </div>
 
-          <div class="modal-footer">
-            <button class="btn btn-outline-secondary zs-btn" @click="closeFormModal">Fermer</button>
+          <!-- ✅ MODAL FOOTER : tous les boutons d'action ici -->
+          <div class="modal-footer zs-modal-footer">
+            <div class="me-auto d-flex align-items-center gap-2 flex-wrap">
+              <button class="btn btn-outline-secondary zs-btn" @click="closeFormModal" :disabled="loading">
+                Fermer
+              </button>
+
+              <button v-if="editingId" class="btn btn-outline-secondary zs-btn zs-btn-neo" @click="cancelEdit" :disabled="loading">
+                Annuler édition
+              </button>
+            </div>
+
+            <button class="btn btn-success zs-btn zs-btn-neo" @click="submit" :disabled="loading || !canSubmit">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i v-else class="fa-solid" :class="editingId ? 'fa-pen-to-square' : 'fa-floppy-disk'"></i>
+              <span class="ms-2">{{ editingId ? "Mettre à jour" : "Enregistrer" }}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1439,14 +1446,26 @@ onMounted(() => {
 .zs-input{ border-radius: 12px !important; }
 .zs-input:focus{ box-shadow: 0 0 0 .2rem var(--zs-ring) !important; }
 
-/* suggestions */
+/* ✅ suggestions (FIX: éviter que la miniature soit “coupée” par le border-radius) */
 .zs-suggest{
-  z-index: 60;
+  z-index: 80;                /* au-dessus du contenu du modal */
   border-radius: 14px;
-  overflow: hidden;
   border: 1px solid var(--zs-border);
+  overflow: hidden;           /* on garde le radius propre */
+  background: rgba(255,255,255,.96);
+  padding: 6px;               /* ✅ inset: plus collé au bord => plus de coupe */
 }
-.zs-suggest .list-group-item{ border: 0; }
+.zs-suggest .list-group-item{
+  border: 0;
+  border-radius: 12px;        /* ✅ item arrondi, pas collé au bord */
+  padding: .55rem .65rem;     /* ✅ marge interne */
+}
+.zs-suggest .list-group-item + .list-group-item{
+  margin-top: 6px;            /* ✅ séparation douce */
+}
+.zs-suggest .list-group-item:active{
+  transform: translateY(0);   /* éviter l’effet qui “mange” le coin */
+}
 
 /* thumbs */
 .zs-thumb{
@@ -1458,8 +1477,11 @@ onMounted(() => {
   display:flex; align-items:center; justify-content:center;
   flex: 0 0 auto;
 }
-.zs-thumb img{ width: 100%; height: 100%; object-fit: cover; }
-.zs-thumb-sm{ width: 40px; height: 40px; border-radius: 12px; }
+.zs-thumb img{ width: 100%; height: 100%; object-fit: cover; display:block; }
+.zs-thumb-sm{
+  width: 44px; height: 44px;      /* ✅ un peu plus grand et lisible */
+  border-radius: 12px;
+}
 
 /* tag */
 .zs-tag{
@@ -1512,9 +1534,7 @@ onMounted(() => {
 .zs-st-neutral{ color:#334155; background: rgba(255,255,255,.80); }
 
 /* ===== TABLE MODE (GRID comme Encaissement) ===== */
-.zs-list{
-  background: rgba(255,255,255,.70);
-}
+.zs-list{ background: rgba(255,255,255,.70); }
 .zs-list-head{
   display:grid;
   gap: 10px;
@@ -1524,8 +1544,6 @@ onMounted(() => {
   font-weight: 900;
   color: rgba(15,23,42,.70);
   background: rgba(248,249,250,.92);
-
-  /* colonnes desktop */
   grid-template-columns: 140px 1.2fr 1fr 180px 120px 1.2fr 160px 170px 210px;
 }
 .zs-row{
@@ -1534,20 +1552,12 @@ onMounted(() => {
   padding: 12px 12px;
   border-bottom: 1px solid rgba(0,0,0,.06);
   align-items: start;
-
   grid-template-columns: 140px 1.2fr 1fr 180px 120px 1.2fr 160px 170px 210px;
 }
 .zs-list-body .zs-row:last-child{ border-bottom: 0; }
-
 .zs-cell{ min-width: 0; }
-.zs-actions{
-  display:flex;
-  gap: 8px;
-  justify-content: flex-end;
-  align-items:center;
-}
+.zs-actions{ display:flex; gap: 8px; justify-content: flex-end; align-items:center; }
 
-/* mapping colonnes */
 .zs-h-datec{ grid-column: 1; }
 .zs-h-client{ grid-column: 2; }
 .zs-h-contact{ grid-column: 3; }
@@ -1660,6 +1670,15 @@ onMounted(() => {
 
 /* modal */
 .zs-modal{ border-radius: 18px; overflow: hidden; }
+
+/* ✅ footer modal (actions en bas) */
+.zs-modal-footer{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
 /* badges ok/warn */
 .zs-badge-ok{
