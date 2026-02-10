@@ -10,7 +10,7 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div class="zs-dot"></div>
               <h4 class="mb-0 zs-title">Commandes</h4>
-              <span class="zs-pill-soft">
+              <span class="zs-pill-soft zs-pill-soft--sm">
                 <i class="fa-solid fa-bolt me-1"></i> Vente & Livraison
               </span>
             </div>
@@ -66,6 +66,15 @@
               <span class="ms-2 d-none d-sm-inline">Rafraîchir</span>
             </button>
 
+            <div class="btn-group zs-btn-neo" role="group" aria-label="Affichage">
+              <button class="btn zs-btn" :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'" @click="viewMode = 'table'">
+                <i class="fa-solid fa-table"></i>
+              </button>
+              <button class="btn zs-btn" :class="viewMode === 'card' ? 'btn-primary' : 'btn-outline-primary'" @click="viewMode = 'card'">
+                <i class="fa-solid fa-id-card-clip"></i>
+              </button>
+            </div>
+
             <button class="btn btn-outline-primary zs-btn zs-btn-neo" @click="toggleFilters" title="Filtres">
               <i class="fa-solid fa-filter me-1"></i>
               Filtres
@@ -77,6 +86,7 @@
               class="btn btn-outline-danger zs-btn zs-btn-neo"
               @click="resetFiltersAndReload"
               title="Réinitialiser"
+              :disabled="loading"
             >
               <i class="fa-solid fa-xmark"></i>
             </button>
@@ -95,41 +105,35 @@
           <div class="d-flex align-items-center gap-2 min-width-0">
             <i class="fa-solid fa-list me-1 text-primary"></i>
             <span class="fw-bold">Liste des commandes</span>
-            <span class="zs-pill-count">{{ totalCount }}</span>
-
-            <div class="d-flex align-items-center gap-1 ms-2">
-              <button class="btn btn-sm btn-outline-secondary zs-btn" @click="goPrev" :disabled="!prevUrl || loading" title="Précédent">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
-              <span class="small text-muted">Page {{ page }} / {{ totalPages }}</span>
-              <button class="btn btn-sm btn-outline-secondary zs-btn" @click="goNext" :disabled="!nextUrl || loading" title="Suivant">
-                <i class="fa-solid fa-chevron-right"></i>
-              </button>
-
-              <select v-model.number="pageSize" class="form-select form-select-sm ms-2 zs-input" style="width: 96px" title="Taille page">
-                <option :value="10">10</option>
-                <option :value="20">20</option>
-                <option :value="50">50</option>
-                <option :value="100">100</option>
-              </select>
-            </div>
+            <span class="zs-pill-count zs-pill-count--sm">{{ totalCount }}</span>
           </div>
 
           <div class="d-flex align-items-center gap-2">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Affichage">
-              <button class="btn zs-btn" :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'" @click="viewMode = 'table'">
-                <i class="fa-solid fa-table"></i>
-              </button>
-              <button class="btn zs-btn" :class="viewMode === 'card' ? 'btn-primary' : 'btn-outline-primary'" @click="viewMode = 'card'">
-                <i class="fa-solid fa-id-card-clip"></i>
-              </button>
-            </div>
+            <button class="btn btn-sm btn-outline-secondary zs-btn" @click="goPrev" :disabled="!prevUrl || loading" title="Précédent">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="small text-muted">Page {{ page }} / {{ totalPages }}</span>
+            <button class="btn btn-sm btn-outline-secondary zs-btn" @click="goNext" :disabled="!nextUrl || loading" title="Suivant">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+
+            <select
+              v-model.number="pageSize"
+              class="form-select form-select-sm ms-2 zs-input"
+              style="width: 96px"
+              title="Taille page"
+            >
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
           </div>
         </div>
 
         <!-- FILTERS -->
         <div v-if="showFilters" class="zs-filters px-3 pt-2 pb-3 border-top">
-          <div class="row g-2">
+          <div class="row g-2 align-items-end">
             <div class="col-12 col-md-3">
               <label class="form-label small text-muted mb-1">Date commande</label>
               <input v-model="filters.date_commande" type="date" class="form-control form-control-sm zs-input" @change="applyFiltersServer" />
@@ -168,167 +172,223 @@
         <div class="zs-panel-body p-0">
           <div v-if="loading" class="p-3 text-muted">Chargement...</div>
 
-          <!-- ✅ TABLE SIMPLE (SANS IMAGE, SANS ID, STYLE MINIMAL) -->
-          <div v-else-if="viewMode === 'table'" class="p-3">
-            <div v-if="!commandes.length" class="text-center text-muted py-4">
-              <i class="fa-solid fa-circle-info me-1"></i> Aucun résultat
-            </div>
+          <div v-else>
+            <!-- ===== MODE TABLE (même style Encaissement) ===== -->
+            <div v-if="viewMode === 'table'" class="zs-list">
+              <div class="zs-list-head">
+                <div class="zs-h-datec">Cmd</div>
+                <div class="zs-h-client">Client</div>
+                <div class="zs-h-contact">Contact</div>
+                <div class="zs-h-total">Total</div>
+                <div class="zs-h-datel">Liv.</div>
+                <div class="zs-h-lieu">Lieu</div>
+                <div class="zs-h-page">Page</div>
+                <div class="zs-h-statut">Statut</div>
+                <div class="zs-h-actions"></div>
+              </div>
 
-            <div v-else class="zs-table-wrap">
-              <table class="table table-sm align-middle zs-table-simple mb-0">
-                <thead>
-                  <tr>
-                    <th>Date commande</th>
-                    <th>Date livraison</th>
-                    <th>Articles (client)</th>
-                    <th>Page client</th>
-                    <th>Statut</th>
-                    <th class="text-end">Actions</th>
-                  </tr>
-                </thead>
+              <div v-if="commandes.length === 0" class="text-center text-muted py-4">
+                <i class="fa-solid fa-circle-info me-1"></i> Aucune commande
+              </div>
 
-                <tbody>
-                  <tr v-for="c in commandes" :key="c.id">
-                    <td class="zs-td-date">
-                      <div class="fw-semibold">{{ c.date_commande || "-" }}</div>
-                      <div class="small text-muted">
-                        <i class="fa-solid fa-user me-1"></i>{{ c.client_nom || "-" }}
-                        <span v-if="c.client_contact"> • {{ c.client_contact }}</span>
+              <div v-else class="zs-list-body">
+                <div v-for="c in commandes" :key="c.id" class="zs-row">
+                  <div class="zs-cell zs-datec">
+                    <div class="fw-bold">{{ c.date_commande || "-" }}</div>
+                    <div class="small text-muted zs-ellipsis2">
+                      <i class="fa-solid fa-boxes-stacked me-1"></i>{{ (c.lignes_detail?.length || 0) }} art.
+                    </div>
+                  </div>
+
+                  <div class="zs-cell zs-client">
+                    <div class="fw-semibold zs-ellipsis2">{{ c.client_nom || "-" }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-contact">
+                    <div class="text-muted small zs-ellipsis2">{{ c.client_contact || "-" }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-total text-end">
+                    <div class="fw-bold">{{ formatAr(Number(c.total_commande || 0)) }}</div>
+                    <div class="small text-muted">{{ formatAr(Number(c.total_articles || 0)) }} + {{ formatAr(Number(c.frais_final || 0)) }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-datel">
+                    <div class="small">{{ c.date_livraison || "-" }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-lieu">
+                    <div class="small zs-ellipsis2">{{ c.lieu_detail?.nom || "-" }}</div>
+                    <div v-if="c.precision_lieu" class="small text-muted zs-ellipsis2">{{ c.precision_lieu }}</div>
+                  </div>
+
+                  <div class="zs-cell zs-page">
+                    <span v-if="c.page_detail?.nom" class="zs-tag zs-tag--sm">{{ c.page_detail.nom }}</span>
+                    <span v-else class="text-muted small">-</span>
+                  </div>
+
+                  <div class="zs-cell zs-statut">
+                    <span class="zs-status zs-status--table" :class="badgeStatutClass(c.statut)">
+                      <span class="zs-status-dot"></span>
+                      <i class="fa-solid me-1" :class="iconStatut(c.statut)"></i>
+                      {{ labelStatut(c.statut) }}
+                    </span>
+                  </div>
+
+                  <div class="zs-cell zs-actions text-end">
+                    <div class="zs-actions">
+                      <button class="btn btn-sm btn-outline-primary zs-btn zs-btn-neo" @click="viewCommande(c)" title="Voir">
+                        <i class="fa-solid fa-eye"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openEditModal(c)" title="Éditer">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="removeCommande(c.id)" title="Supprimer">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ✅ sub line (mobile only) -->
+                  <div class="zs-sub">
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-regular fa-calendar me-1"></i> Dates</div>
+                      <div class="zs-subval">
+                        <div class="fw-semibold">Cmd: {{ c.date_commande || "-" }}</div>
+                        <div class="small text-muted">Liv: {{ c.date_livraison || "-" }}</div>
                       </div>
-                    </td>
+                    </div>
 
-                    <td class="zs-td-date">
-                      <div class="fw-semibold">{{ c.date_livraison || "-" }}</div>
-                      <div class="small text-muted">
-                        <i class="fa-solid fa-location-dot me-1"></i>{{ c.lieu_detail?.nom || "-" }}
-                        <span v-if="c.precision_lieu"> • {{ c.precision_lieu }}</span>
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-user me-1"></i> Client</div>
+                      <div class="zs-subval">
+                        <div class="fw-semibold zs-ellipsis2">{{ c.client_nom || "-" }}</div>
+                        <div class="small text-muted zs-ellipsis2">{{ c.client_contact || "-" }}</div>
                       </div>
-                    </td>
+                    </div>
 
-                    <td class="zs-td-articles">
-                      <div v-if="c.lignes_detail?.length" class="zs-articles-list">
-                        <div v-for="l in c.lignes_detail" :key="l.id" class="zs-article-line">
-                          <span class="fw-semibold">{{ l.article_detail?.nom_produit || "Article" }}</span>
-                          <span class="text-muted"> x{{ l.quantite }}</span>
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-location-dot me-1"></i> Lieu</div>
+                      <div class="zs-subval">
+                        <div class="zs-ellipsis2">{{ c.lieu_detail?.nom || "-" }}</div>
+                        <div v-if="c.precision_lieu" class="small text-muted zs-ellipsis2">{{ c.precision_lieu }}</div>
+                      </div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-coins me-1"></i> Total</div>
+                      <div class="zs-subval fw-bold">{{ formatAr(Number(c.total_commande || 0)) }}</div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-tag me-1"></i> Statut</div>
+                      <div class="zs-subval">
+                        <span class="zs-status zs-status--table" :class="badgeStatutClass(c.statut)">
+                          <span class="zs-status-dot"></span>
+                          {{ labelStatut(c.statut) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-regular fa-window-maximize me-1"></i> Page</div>
+                      <div class="zs-subval">
+                        <span v-if="c.page_detail?.nom" class="zs-tag zs-tag--sm">{{ c.page_detail.nom }}</span>
+                        <span v-else class="text-muted small">-</span>
+                      </div>
+                    </div>
+
+                    <div class="zs-subitem">
+                      <div class="zs-subkey"><i class="fa-solid fa-gears me-1"></i> Actions</div>
+                      <div class="zs-subval">
+                        <div class="d-flex gap-2 justify-content-end">
+                          <button class="btn btn-sm btn-outline-primary zs-btn zs-btn-neo" @click="viewCommande(c)" title="Voir">
+                            <i class="fa-solid fa-eye"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openEditModal(c)" title="Éditer">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="removeCommande(c.id)" title="Supprimer">
+                            <i class="fa-solid fa-trash"></i>
+                          </button>
                         </div>
                       </div>
-                      <div v-else class="text-muted small">Aucun article</div>
-                    </td>
+                    </div>
+                  </div>
 
-                    <td class="zs-td-page">
-                      <span v-if="c.page_detail?.nom" class="zs-tag">{{ c.page_detail.nom }}</span>
-                      <span v-else class="text-muted">-</span>
-                    </td>
-
-                    <td class="zs-td-statut">
-                      <span class="zs-status zs-status-sm" :class="badgeStatutClass(c.statut)">
-                        <span class="zs-status-dot"></span>
-                        <i class="fa-solid me-1" :class="iconStatut(c.statut)"></i>
-                        {{ labelStatut(c.statut) }}
-                      </span>
-                    </td>
-
-                    <td class="text-end">
-                      <div class="d-inline-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary zs-btn" @click="viewCommande(c)" title="Voir">
-                          <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning zs-btn" @click="openEditModal(c)" title="Éditer">
-                          <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger zs-btn" @click="removeCommande(c.id)" title="Supprimer">
-                          <i class="fa-solid fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- ✅ CARD (AVEC IMAGE ARTICLE) -->
-          <div v-else class="p-3">
-            <div v-if="!commandes.length" class="text-center text-muted py-4">
-              <i class="fa-solid fa-circle-info me-1"></i> Aucun résultat
+                </div>
+              </div>
             </div>
 
+            <!-- ===== MODE CARD (même style Encaissement) ===== -->
             <div v-else class="zs-cards">
-              <div v-for="c in commandes" :key="c.id" class="zs-cardline">
-                <div class="d-flex justify-content-between align-items-start gap-3">
-                  <!-- image article (card only) -->
-                  <div class="zs-thumb zs-thumb-sm d-none d-sm-flex">
-                    <img
-                      v-if="firstArticlePhoto(c)"
-                      :src="firstArticlePhoto(c)!"
-                      alt="photo"
-                    />
-                    <i v-else class="fa-solid fa-box text-muted"></i>
+              <div v-if="commandes.length === 0" class="text-center text-muted py-4">
+                <i class="fa-solid fa-circle-info me-1"></i> Aucune commande
+              </div>
+
+              <div v-else class="zs-cards-grid">
+                <div v-for="c in commandes" :key="c.id" class="zs-card">
+                  <div class="zs-card-top">
+                    <div class="fw-bold">
+                      {{ c.client_nom || "-" }}
+                      <span class="text-muted fw-normal ms-1">• Cmd {{ c.date_commande || "-" }}</span>
+                    </div>
+
+                    <span class="zs-status zs-card-status" :class="badgeStatutClass(c.statut)">
+                      <span class="zs-status-dot"></span>
+                      <i class="fa-solid me-1" :class="iconStatut(c.statut)"></i>
+                      {{ labelStatut(c.statut) }}
+                    </span>
                   </div>
 
-                  <div class="min-width-0 flex-grow-1">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <div class="fw-bold">{{ c.client_nom || "Client" }}</div>
-                      <span class="zs-status zs-status-sm" :class="badgeStatutClass(c.statut)">
-                        <span class="zs-status-dot"></span>
-                        <i class="fa-solid me-1" :class="iconStatut(c.statut)"></i>
-                        {{ labelStatut(c.statut) }}
-                      </span>
+                  <div class="zs-card-body">
+                    <div class="zs-card-row">
+                      <div class="zs-k">Contact</div>
+                      <div class="zs-v text-muted small zs-ellipsis2">{{ c.client_contact || "-" }}</div>
                     </div>
 
-                    <div class="small text-muted zs-ellipsis mt-1" v-if="c.client_contact">
-                      <i class="fa-solid fa-phone me-1"></i>{{ c.client_contact }}
+                    <div class="zs-card-row">
+                      <div class="zs-k">Livraison</div>
+                      <div class="zs-v small">{{ c.date_livraison || "-" }}</div>
                     </div>
 
-                    <div class="small text-muted zs-ellipsis">
-                      <i class="fa-regular fa-calendar me-1"></i> Cmd: {{ c.date_commande || "-" }}
-                      <span v-if="c.date_livraison"> • <i class="fa-solid fa-truck me-1"></i>Liv: {{ c.date_livraison }}</span>
-                    </div>
-
-                    <div class="small text-muted zs-ellipsis">
-                      <i class="fa-solid fa-location-dot me-1"></i> {{ c.lieu_detail?.nom || "-" }}
-                      <span v-if="c.precision_lieu"> • {{ c.precision_lieu }}</span>
-                    </div>
-
-                    <div class="small text-muted zs-ellipsis" v-if="c.page_detail?.nom">
-                      <i class="fa-regular fa-window-maximize me-1"></i> {{ c.page_detail.nom }}
-                    </div>
-
-                    <div class="mt-2">
-                      <div v-if="c.lignes_detail?.length" class="d-flex flex-column gap-1">
-                        <div v-for="l in c.lignes_detail" :key="l.id" class="small d-flex justify-content-between gap-2">
-                          <div class="zs-ellipsis">
-                            <span class="fw-semibold">{{ l.article_detail?.nom_produit || "Article" }}</span>
-                            <span class="text-muted"> x{{ l.quantite }}</span>
-                          </div>
-                          <div class="text-muted">PU {{ formatAr(Number(l.prix_vente_unitaire)) }}</div>
-                        </div>
+                    <div class="zs-card-row">
+                      <div class="zs-k">Lieu</div>
+                      <div class="zs-v small zs-ellipsis2">
+                        {{ c.lieu_detail?.nom || "-" }}
+                        <span v-if="c.precision_lieu" class="text-muted"> • {{ c.precision_lieu }}</span>
                       </div>
-                      <div v-else class="small text-muted">Aucun article</div>
+                    </div>
+
+                    <div class="zs-card-row">
+                      <div class="zs-k">Total</div>
+                      <div class="zs-v fw-bold">{{ formatAr(Number(c.total_commande || 0)) }}</div>
+                    </div>
+
+                    <div class="zs-card-row">
+                      <div class="zs-k">Page</div>
+                      <div class="zs-v">
+                        <span v-if="c.page_detail?.nom" class="zs-tag zs-tag--sm">{{ c.page_detail.nom }}</span>
+                        <span v-else class="text-muted small">-</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="text-end">
-                    <div class="fw-bold">{{ formatAr(c.total_commande) }}</div>
-                    <div class="small text-muted">{{ formatAr(c.total_articles) }} + {{ formatAr(c.frais_final || 0) }}</div>
-
-                    <div class="mt-2 d-flex justify-content-end">
-                      <div class="d-inline-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary zs-btn" @click="viewCommande(c)" title="Voir">
-                          <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning zs-btn" @click="openEditModal(c)" title="Éditer">
-                          <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger zs-btn" @click="removeCommande(c.id)" title="Supprimer">
-                          <i class="fa-solid fa-trash"></i>
-                        </button>
-                      </div>
-                    </div>
+                  <div class="zs-card-actions">
+                    <button class="btn btn-sm btn-outline-primary zs-btn zs-btn-neo" @click="viewCommande(c)">
+                      <i class="fa-solid fa-eye me-1"></i> Voir
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openEditModal(c)">
+                      <i class="fa-solid fa-pen-to-square me-1"></i> Éditer
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="removeCommande(c.id)">
+                      <i class="fa-solid fa-trash me-1"></i> Supprimer
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -339,10 +399,10 @@
           </div>
 
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-secondary zs-btn" @click="goPrev" :disabled="!prevUrl || loading">
+            <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="goPrev" :disabled="!prevUrl || loading">
               <i class="fa-solid fa-chevron-left me-1"></i> Précédent
             </button>
-            <button class="btn btn-sm btn-outline-secondary zs-btn" @click="goNext" :disabled="!nextUrl || loading">
+            <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="goNext" :disabled="!nextUrl || loading">
               Suivant <i class="fa-solid fa-chevron-right ms-1"></i>
             </button>
           </div>
@@ -376,7 +436,7 @@
                 </div>
               </div>
 
-              <span class="zs-status zs-status-sm" :class="badgeStatutClass(selectedCommande?.statut)">
+              <span class="zs-status zs-status--table" :class="badgeStatutClass(selectedCommande?.statut)">
                 <span class="zs-status-dot"></span>
                 <i class="fa-solid me-1" :class="iconStatut(selectedCommande?.statut)"></i>
                 {{ labelStatut(selectedCommande?.statut) }}
@@ -444,7 +504,7 @@
       </div>
     </div>
 
-    <!-- MODAL : CREATE / EDIT -->
+    <!-- MODAL : CREATE / EDIT (inchangé) -->
     <div v-if="showFormModal" class="modal fade show d-block zs-backdrop" tabindex="-1" @click.self="closeFormModal">
       <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content zs-modal">
@@ -981,12 +1041,6 @@ function iconStatut(s: any) {
   }
 }
 
-// card helpers
-function firstArticlePhoto(c: any): string | null {
-  const photo = c?.lignes_detail?.[0]?.article_detail?.photo_url;
-  return photo || null;
-}
-
 // qty helpers
 function recalcLine(i: number) {
   const l = form.value.lignes[i];
@@ -1154,8 +1208,8 @@ async function loadCommandes() {
 
     const res = await VenteAPI.list(params);
 
-    commandes.value = res.data.results;
-    totalCount.value = res.data.count;
+    commandes.value = res.data.results || [];
+    totalCount.value = res.data.count || 0;
     nextUrl.value = res.data.next;
     prevUrl.value = res.data.previous;
   } catch (e: any) {
@@ -1256,6 +1310,7 @@ onMounted(() => {
 .min-width-0 { min-width: 0; }
 .zs-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zs-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* backdrop */
 .zs-backdrop { background: rgba(0,0,0,.45); }
@@ -1318,6 +1373,13 @@ onMounted(() => {
   color: rgba(13,110,253,1);
   font-weight: 800;
   font-size: .78rem;
+}
+.zs-pill-soft--sm{
+  padding: 0.10rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
 }
 
 /* KPIs */
@@ -1412,8 +1474,12 @@ onMounted(() => {
   font-size: .78rem;
   max-width: 100%;
 }
+.zs-tag--sm{
+  padding: .18rem .48rem;
+  font-size: .72rem;
+}
 
-/* ✅ STATUS: plus petit (pas grand) */
+/* STATUS (réutilisable encaissement-like) */
 .zs-status{
   position: relative;
   display:inline-flex;
@@ -1430,53 +1496,166 @@ onMounted(() => {
   background: currentColor;
   box-shadow: 0 0 0 3px rgba(255,255,255,.65);
 }
-/* taille réduite */
-.zs-status-sm{
-  padding: .22rem .55rem;
+.zs-status--table{
+  padding: 0.18rem 0.50rem;
   font-weight: 900;
-  font-size: .76rem;
-  letter-spacing: .1px;
+  font-size: .72rem;
+  line-height: 1;
   box-shadow: 0 8px 14px rgba(0,0,0,.05);
 }
 
+/* status colors */
 .zs-st { color: #0f172a; background: rgba(255,255,255,.80); }
 .zs-st-ship   { color:#a16207; background: linear-gradient(180deg, rgba(245,158,11,.22), rgba(255,255,255,.82)); border-color: rgba(245,158,11,.30); }
 .zs-st-done   { color:#15803d; background: linear-gradient(180deg, rgba(34,197,94,.20), rgba(255,255,255,.82)); border-color: rgba(34,197,94,.28); }
 .zs-st-cancel { color:#b91c1c; background: linear-gradient(180deg, rgba(239,68,68,.20), rgba(255,255,255,.82)); border-color: rgba(239,68,68,.28); }
 .zs-st-neutral{ color:#334155; background: rgba(255,255,255,.80); }
 
-/* ✅ TABLE SIMPLE */
-.zs-table-wrap{
-  border: 1px solid var(--zs-border);
-  border-radius: 16px;
-  overflow: hidden;
-  background: rgba(255,255,255,.85);
+/* ===== TABLE MODE (GRID comme Encaissement) ===== */
+.zs-list{
+  background: rgba(255,255,255,.70);
 }
-.zs-table-simple thead th{
+.zs-list-head{
+  display:grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
   font-size: .78rem;
-  color: rgba(15,23,42,.70);
   font-weight: 900;
+  color: rgba(15,23,42,.70);
   background: rgba(248,249,250,.92);
-  border-bottom: 1px solid var(--zs-border);
-  padding: 10px 10px;
-}
-.zs-table-simple tbody td{
-  padding: 10px 10px;
-  border-top: 1px solid rgba(0,0,0,.06);
-  vertical-align: top;
-}
-.zs-td-articles .zs-article-line{ line-height: 1.25; }
-.zs-articles-list{ display:flex; flex-direction:column; gap:4px; }
-.zs-td-date, .zs-td-page, .zs-td-statut { white-space: normal; }
 
-/* cards list */
-.zs-cards{ display:flex; flex-direction: column; gap: 10px; }
-.zs-cardline{
-  border: 1px solid var(--zs-border);
-  background: rgba(255,255,255,.86);
-  border-radius: 18px;
-  padding: .85rem;
-  box-shadow: var(--zs-shadow-soft);
+  /* colonnes desktop */
+  grid-template-columns: 140px 1.2fr 1fr 180px 120px 1.2fr 160px 170px 210px;
+}
+.zs-row{
+  display:grid;
+  gap: 10px;
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  align-items: start;
+
+  grid-template-columns: 140px 1.2fr 1fr 180px 120px 1.2fr 160px 170px 210px;
+}
+.zs-list-body .zs-row:last-child{ border-bottom: 0; }
+
+.zs-cell{ min-width: 0; }
+.zs-actions{
+  display:flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items:center;
+}
+
+/* mapping colonnes */
+.zs-h-datec{ grid-column: 1; }
+.zs-h-client{ grid-column: 2; }
+.zs-h-contact{ grid-column: 3; }
+.zs-h-total{ grid-column: 4; }
+.zs-h-datel{ grid-column: 5; }
+.zs-h-lieu{ grid-column: 6; }
+.zs-h-page{ grid-column: 7; }
+.zs-h-statut{ grid-column: 8; }
+.zs-h-actions{ grid-column: 9; }
+
+.zs-datec{ grid-column: 1; }
+.zs-client{ grid-column: 2; }
+.zs-contact{ grid-column: 3; }
+.zs-total{ grid-column: 4; }
+.zs-datel{ grid-column: 5; }
+.zs-lieu{ grid-column: 6; }
+.zs-page{ grid-column: 7; }
+.zs-statut{ grid-column: 8; }
+.zs-actions{ grid-column: 9; }
+
+/* ✅ mobile */
+.zs-sub{ display: none; }
+@media (max-width: 992px){
+  .zs-list-head{ display:none; }
+  .zs-row{
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 12px 12px !important;
+  }
+  .zs-datec,.zs-client,.zs-contact,.zs-total,.zs-datel,.zs-lieu,.zs-page,.zs-statut,.zs-actions{
+    grid-column: 1 !important;
+  }
+  .zs-actions{ justify-content: flex-end; }
+  .zs-sub{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-top: 4px;
+  }
+  .zs-subitem{
+    display:grid;
+    grid-template-columns: 120px 1fr;
+    gap: 10px;
+    align-items:start;
+  }
+  .zs-subkey{
+    font-size: .78rem;
+    color: rgba(0,0,0,.55);
+    font-weight: 800;
+  }
+  .zs-subval{ min-width: 0; }
+}
+
+/* ===== Card mode (GRID comme Encaissement) ===== */
+.zs-cards{ background: rgba(255,255,255,.70); }
+.zs-cards-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+@media (max-width: 1200px){
+  .zs-cards-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px){
+  .zs-cards-grid{ grid-template-columns: 1fr; }
+}
+
+.zs-card{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.85);
+  box-shadow: 0 10px 30px rgba(0,0,0,.06);
+  overflow:hidden;
+}
+.zs-card-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.zs-card-body{
+  padding: 10px 12px 12px;
+  display:grid;
+  gap: 8px;
+}
+.zs-card-row{
+  display:grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items:center;
+}
+.zs-k{ font-size: .78rem; color: rgba(0,0,0,.55); font-weight: 800; }
+.zs-v{ min-width: 0; }
+.zs-card-actions{
+  display:flex;
+  gap: 8px;
+  justify-content:flex-end;
+  padding: 10px 12px 12px;
+}
+
+/* badge statut compact dans les cards */
+.zs-card-status{
+  padding: 0.18rem 0.5rem !important;
+  font-size: .72rem !important;
+  line-height: 1 !important;
 }
 
 /* modal */
