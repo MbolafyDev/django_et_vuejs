@@ -26,6 +26,9 @@ import ConfigurationDashboardView from "@/views/configuration/ConfigurationDashb
 import ConfigurationPagesView from "@/views/configuration/ConfigurationPagesView.vue";
 import ConfigurationPageFormView from "@/views/configuration/ConfigurationPageFormView.vue";
 
+// ✅ NEW: Users management
+import UsersView from "@/views/configuration/UsersView.vue";
+
 import FacturesView from "@/views/facturation/FacturesView.vue";
 import ConflivraisonListView from "@/views/conflivraison/ConflivraisonListView.vue";
 import ProfileView from "@/views/auth/ProfileView.vue";
@@ -38,7 +41,6 @@ import { requireRole } from "@/router/guards/roles";
 import { ROLES, defaultRouteForRole } from "@/helpers/roles";
 
 const routes = [
-  // ✅ home dynamique (on gère dans beforeEach)
   { path: "/", name: "home", redirect: "/dashboard-stats" },
 
   // Auth
@@ -66,7 +68,7 @@ const routes = [
   // Base
   { path: "/profil", name: "profil", component: ProfileView, meta: { requiresAuth: true } },
 
-  // ✅ NEW: Charges (ADMIN + COMMERCIALE + CM si tu veux)
+  // Charges
   {
     path: "/charges",
     name: "charges",
@@ -75,7 +77,7 @@ const routes = [
     beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]),
   },
 
-  // Clients (auth + roles)
+  // Clients
   {
     path: "/clients",
     name: "clients",
@@ -84,7 +86,7 @@ const routes = [
     beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER, ROLES.COMMERCIALE]),
   },
 
-  // Articles (CM + ADMIN)
+  // Articles
   {
     path: "/articles",
     name: "articles",
@@ -93,7 +95,7 @@ const routes = [
     beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMUNITY_MANAGER]),
   },
 
-  // Achats (ADMIN seulement par défaut)
+  // Achats
   {
     path: "/achats",
     name: "achats",
@@ -128,7 +130,7 @@ const routes = [
     beforeEnter: requireRole([ROLES.ADMIN, ROLES.COMMERCIALE, ROLES.COMMUNITY_MANAGER]),
   },
 
-  // Livraison (paramètres) — ADMIN
+  // Livraison
   {
     path: "/parametres/livraison/lieux",
     name: "livraison_lieux",
@@ -194,7 +196,15 @@ const routes = [
     beforeEnter: requireRole([ROLES.ADMIN]),
   },
 
-  // ✅ catch-all
+  // ✅ NEW: Gestion utilisateurs (ADMIN)
+  {
+    path: "/configuration/users",
+    name: "configuration_users",
+    component: UsersView,
+    meta: { requiresAuth: true },
+    beforeEnter: requireRole([ROLES.ADMIN]),
+  },
+
   { path: "/:pathMatch(.*)*", redirect: "/dashboard-stats" },
 ];
 
@@ -205,14 +215,10 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
-
-  // ✅ si token présent, on recharge l’utilisateur
-  // IMPORTANT: si ton store utilise "access_token" en clé, garde ça.
   const hasAccess = !!localStorage.getItem("access_token");
 
   if (!auth.user && hasAccess) {
     try {
-      // fetchMe doit gérer le refresh si access expiré (sinon tu seras renvoyé login)
       await auth.fetchMe();
     } catch (e) {
       console.warn("fetchMe failed => redirect login", e);
@@ -221,18 +227,15 @@ router.beforeEach(async (to) => {
     }
   }
 
-  // ✅ pages protégées
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: "login", query: { next: to.fullPath } };
   }
 
-  // ✅ guest-only
   if (to.meta.guestOnly && auth.isAuthenticated) {
     const role = auth.user?.role || null;
     return defaultRouteForRole(role);
   }
 
-  // ✅ HOME: si "/" on redirige selon rôle
   if (to.name === "home") {
     const role = auth.user?.role || null;
     return defaultRouteForRole(role);

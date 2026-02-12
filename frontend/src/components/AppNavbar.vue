@@ -5,7 +5,7 @@ import { useAuthStore } from "../stores/auth";
 import { useRouter, useRoute } from "vue-router";
 import Tooltip from "bootstrap/js/dist/tooltip";
 
-// ✅ import API configuration
+// ✅ import API configuration (pages dynamiques)
 import { ConfigurationAPI, type PageConfig } from "@/services/configuration";
 
 const auth = useAuthStore();
@@ -13,57 +13,62 @@ const router = useRouter();
 const route = useRoute();
 
 /* ===========================
-   ✅ Role helpers
+   ✅ Role helpers (ULTRA)
+   - Admin = role ADMIN OU is_staff OU is_superuser
 =========================== */
-const isAdmin = computed(() => auth.user?.role === "ADMIN");
-
-/* ===========================
-   ✅ Menus (avec Charges ADMIN ONLY)
-=========================== */
-const menus = computed(() => {
-  const base = [
-    { to: "/commandes", label: "Commandes", icon: "fa-solid fa-receipt" },
-    // { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" },
-    // { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" },
-    // { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" },
-    { to: "/articles", label: "Articles", icon: "fa-solid fa-box" },
-    { to: "/clients", label: "Clients", icon: "fa-solid fa-users" },
-  ];
-
-  // ✅ Charges visible uniquement ADMIN
-  if (isAdmin.value) {
-    // ✅ Facturation ADMIN ONLY
-    base.splice(1, 0, { to: "/factures", label: "Facturation", icon: "fa-solid fa-file-invoice-dollar" });
-    base.splice(3, 0, { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" });
-    base.splice(4, 0, { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" });
-
-    base.splice(2, 0, { to: "/charges", label: "Charges", icon: "fa-solid fa-coins" }); // après Facturation
-    base.splice(5, 0, { to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" }); // après Facturation
-  }
-
-  return base;
+const isAdmin = computed(() => {
+  const u: any = auth.user;
+  if (!u) return false;
+  return u.role === "ADMIN" || u.is_superuser === true || u.is_staff === true;
 });
 
 const isActive = (path: string) => route.path.startsWith(path);
 
 /* ===========================
+   ✅ Menus (ADMIN extra)
+=========================== */
+const menus = computed(() => {
+  const base = [
+    { to: "/commandes", label: "Commandes", icon: "fa-solid fa-receipt" },
+    { to: "/articles", label: "Articles", icon: "fa-solid fa-box" },
+    { to: "/clients", label: "Clients", icon: "fa-solid fa-users" },
+  ];
+
+  if (isAdmin.value) {
+    base.splice(1, 0, { to: "/factures", label: "Facturation", icon: "fa-solid fa-file-invoice-dollar" });
+    base.splice(2, 0, { to: "/charges", label: "Charges", icon: "fa-solid fa-coins" });
+    base.splice(4, 0, { to: "/encaissement", label: "Encaissement", icon: "fa-solid fa-cash-register" });
+    base.splice(5, 0, { to: "/conflivraison", label: "Livraison", icon: "fa-solid fa-truck-fast" });
+    base.push({ to: "/achats", label: "Achat", icon: "fa-solid fa-cart-shopping" });
+  }
+
+  return base;
+});
+
+/* ===========================
    ✅ Helpers user display
 =========================== */
 const displayFirstName = computed(() => {
-  const u = auth.user;
+  const u: any = auth.user;
   if (!u) return "";
   const first = (u.first_name || "").trim();
   return first || u.username || u.email || "Utilisateur";
 });
 
-
 const userAvatar = computed(() => {
-  const url = auth.user?.photo_profil_url || "";
+  const url = (auth.user as any)?.photo_profil_url || "";
   return url && url.trim().length > 0 ? url : null;
 });
 
 const userRoleLabel = computed(() => {
-  const r = auth.user?.role;
+  const u: any = auth.user;
+  if (!u) return "Utilisateur";
+
+  // ✅ priorité superuser/staff (même si role vide)
+  if (u.is_superuser) return "Super Admin";
+  if (u.is_staff && u.role !== "ADMIN") return "Staff";
+
+  const r = u.role;
   if (r === "ADMIN") return "Admin";
   if (r === "COMMUNITY_MANAGER") return "Community manager";
   if (r === "COMMERCIALE") return "Commerciale";
@@ -111,6 +116,7 @@ async function loadConfigLinks() {
     configPages.value = [];
     return;
   }
+
   configLoading.value = true;
   try {
     const res = await ConfigurationAPI.listPages({ actif: true, page_size: 200 });
@@ -287,6 +293,7 @@ watch(
                 <span v-else class="zs-user-dot"></span>
                 <div class="d-flex flex-column lh-1">
                   <span class="zs-user-name">{{ displayFirstName }}</span>
+                  <span class="zs-user-sub">{{ userRoleLabel }}</span>
                 </div>
               </div>
 
@@ -315,6 +322,20 @@ watch(
                       <div class="min-width-0">
                         <div class="fw-bold zs-ellipsis">{{ displayFirstName }}</div>
                         <div class="small text-muted zs-ellipsis">Modifier mon profil</div>
+                      </div>
+                      <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
+                    </router-link>
+                  </li>
+
+                  <!-- ✅ ADMIN quick link (role ADMIN OU superuser/staff) -->
+                  <li v-if="isAdmin">
+                    <router-link class="dropdown-item d-flex align-items-center gap-2" to="/configuration/users">
+                      <span class="zs-dd-ico">
+                        <i class="fa-solid fa-users-gear text-primary"></i>
+                      </span>
+                      <div class="min-width-0">
+                        <div class="fw-bold zs-ellipsis">Utilisateurs</div>
+                        <div class="small text-muted zs-ellipsis">Rôles & activation des comptes</div>
                       </div>
                       <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
                     </router-link>
@@ -349,7 +370,11 @@ watch(
                         <i class="fa-solid fa-arrow-up-right-from-square ms-auto text-muted small"></i>
                       </a>
 
-                      <router-link v-else class="dropdown-item d-flex align-items-center gap-2" :to="normalizeLink(p.lien)">
+                      <router-link
+                        v-else
+                        class="dropdown-item d-flex align-items-center gap-2"
+                        :to="normalizeLink(p.lien)"
+                      >
                         <img v-if="p.logo_url" :src="p.logo_url" class="zs-dd-logo" alt="" />
                         <i v-else class="fa-solid fa-sliders text-muted"></i>
                         <span class="zs-ellipsis">{{ p.nom }}</span>
@@ -359,21 +384,23 @@ watch(
 
                   <li><hr class="dropdown-divider" /></li>
 
-                  <li><h6 class="dropdown-header">Livraison</h6></li>
-                  <li>
+                  <!-- ✅ Livraison (ADMIN only pour tes routes) -->
+                  <li v-if="isAdmin"><h6 class="dropdown-header">Livraison</h6></li>
+                  <li v-if="isAdmin">
                     <router-link class="dropdown-item" to="/parametres/livraison/lieux">
                       <i class="fa-solid fa-location-dot me-2"></i> Lieux de livraison
                     </router-link>
                   </li>
-                  <li>
+                  <li v-if="isAdmin">
                     <router-link class="dropdown-item" to="/parametres/livraison/frais">
                       <i class="fa-solid fa-money-bill-wave me-2"></i> Frais de livraison
                     </router-link>
                   </li>
 
-                  <li><hr class="dropdown-divider" /></li>
+                  <li v-if="isAdmin"><hr class="dropdown-divider" /></li>
 
-                  <li>
+                  <!-- ✅ Panneau de configuration (ADMIN) -->
+                  <li v-if="isAdmin">
                     <router-link class="dropdown-item" to="/configuration">
                       <i class="fa-solid fa-gear me-2"></i> Panneau de configuration
                     </router-link>
@@ -425,6 +452,7 @@ watch(
 
             <div class="min-width-0">
               <div class="fw-bold zs-ellipsis3">{{ displayFirstName }}</div>
+              <div class="small text-muted">{{ userRoleLabel }}</div>
             </div>
           </div>
 
@@ -447,18 +475,18 @@ watch(
               <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
             </button>
 
-            <!-- Livraison -->
-            <div class="zs-sb-section-title mt-3">
+            <!-- Livraison (ADMIN only) -->
+            <div v-if="isAdmin" class="zs-sb-section-title mt-3">
               <i class="fa-solid fa-truck-fast me-2 text-primary"></i> Livraison
             </div>
 
-            <button class="zs-sb-link" type="button" @click="goTo('/parametres/livraison/lieux')">
+            <button v-if="isAdmin" class="zs-sb-link" type="button" @click="goTo('/parametres/livraison/lieux')">
               <span class="zs-sb-ico"><i class="fa-solid fa-location-dot"></i></span>
               <span class="zs-sb-label">Lieux de livraison</span>
               <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
             </button>
 
-            <button class="zs-sb-link" type="button" @click="goTo('/parametres/livraison/frais')">
+            <button v-if="isAdmin" class="zs-sb-link" type="button" @click="goTo('/parametres/livraison/frais')">
               <span class="zs-sb-ico"><i class="fa-solid fa-money-bill-wave"></i></span>
               <span class="zs-sb-label">Frais de livraison</span>
               <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
@@ -490,6 +518,14 @@ watch(
                 <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
               </button>
 
+              <!-- ✅ Utilisateurs (ADMIN: role ADMIN OU staff/superuser) -->
+              <button v-if="isAdmin" class="zs-sb-link" type="button" @click="goTo('/configuration/users')">
+                <span class="zs-sb-ico"><i class="fa-solid fa-users-gear"></i></span>
+                <span class="zs-sb-label">Utilisateurs</span>
+                <i class="fa-solid fa-chevron-right ms-auto text-muted small"></i>
+              </button>
+
+              <!-- ✅ Pages dynamiques -->
               <div class="zs-sb-minihead d-flex align-items-center justify-content-between">
                 <div class="small text-muted fw-bold">Configuration</div>
                 <div class="small text-muted" v-if="configLoading">...</div>
@@ -520,7 +556,8 @@ watch(
                 </button>
               </template>
 
-              <button class="zs-sb-link" type="button" @click="goTo('/configuration')">
+              <!-- ✅ Panneau de configuration (ADMIN) -->
+              <button v-if="isAdmin" class="zs-sb-link" type="button" @click="goTo('/configuration')">
                 <span class="zs-sb-ico"><i class="fa-solid fa-gear"></i></span>
                 <span class="zs-sb-label">Panneau de configuration</span>
                 <i class="fa-solid fa-arrow-right ms-auto text-muted small"></i>
@@ -543,7 +580,7 @@ watch(
 </template>
 
 <style scoped>
-/* (identique à ta version — inchangé) */
+/* ✅ inchangé (ta version) */
 .zs-nav-wrap{
   position: sticky;
   top: 0;
@@ -583,7 +620,6 @@ watch(
 
 .zs-brand-text{ line-height: 1.05; }
 .zs-brand-name{ font-weight: 950; letter-spacing: .3px; color: #0f172a; }
-.zs-brand-sub{ font-size: .72rem; color: rgba(15,23,42,.55); font-weight: 700; }
 
 .zs-toggler{
   border: 1px solid rgba(0,0,0,.10);
@@ -720,7 +756,7 @@ watch(
 </style>
 
 <style>
-/* (identique à ta version — inchangé) */
+/* ✅ inchangé (ta version) */
 .zs-no-scroll{ overflow: hidden !important; }
 
 .zs-sb-backdrop{
@@ -758,7 +794,6 @@ watch(
 }
 
 .zs-sb-title{ font-weight: 950; letter-spacing: .3px; color: #0f172a; }
-.zs-sb-sub{ font-size: .72rem; color: rgba(15,23,42,.55); font-weight: 700; }
 
 .zs-sb-close{
   border: 1px solid rgba(0,0,0,.10);
