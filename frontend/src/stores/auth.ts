@@ -1,5 +1,8 @@
+// frontend/src/stores/auth.ts
 import { defineStore } from "pinia";
 import { api } from "../services/api";
+import type { Router } from "vue-router";
+import { defaultRouteForRole } from "@/helpers/roles";
 
 export type UserRole = "ADMIN" | "COMMERCIALE" | "COMMUNITY_MANAGER";
 export type UserSexe = "M" | "F" | "AUTRE" | "";
@@ -96,7 +99,12 @@ export const useAuthStore = defineStore("auth", {
       this.lastError = "";
     },
 
-    async login(email: string, password: string) {
+    /**
+     * ✅ Login + redirect automatique selon rôle
+     * - si next fourni -> redirect vers next
+     * - sinon -> defaultRouteForRole(user.role)
+     */
+    async login(email: string, password: string, router?: Router, next?: string) {
       this.loading = true;
       this.lastError = "";
 
@@ -109,6 +117,16 @@ export const useAuthStore = defineStore("auth", {
           this.user = res.data.user;
         } else {
           await this.fetchMe();
+        }
+
+        // ✅ redirect
+        if (router) {
+          if (next) {
+            await router.replace(next);
+          } else {
+            const role = this.user?.role || null;
+            await router.replace(defaultRouteForRole(role));
+          }
         }
       } catch (e: any) {
         const data = e?.response?.data;

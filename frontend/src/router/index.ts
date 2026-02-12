@@ -8,7 +8,7 @@ import ForgotPasswordView from "../views/auth/ForgotPasswordView.vue";
 import ResetPasswordView from "../views/auth/ResetPasswordView.vue";
 
 import DashboardView from "../views/DashboardView.vue";
-import DashboardStatsView from "../views/dashboard/DashboardStatsView.vue";
+import DashboardStatsView from "@/views/dashboard/DashboardStatsView.vue";
 
 import ClientsView from "../views/clients/ClientsView.vue";
 import ArticlesView from "../views/article/ArticlesView.vue";

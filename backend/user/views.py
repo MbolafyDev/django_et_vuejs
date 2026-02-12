@@ -12,6 +12,9 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+
 
 from .serializers import (
     RegisterSerializer,
@@ -133,39 +136,59 @@ def admin_set_role(request, user_id: int):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def forgot_password(request):
+    """
+    ✅ Forgot password:
+    - POST { email }
+    - Réponse 200 toujours (anti user enumeration)
+    - En DEV: renvoie reset_link_dev
+    - N'échoue jamais si SMTP down
+    """
     email = (request.data.get("email") or "").strip().lower()
     if not email:
         return Response({"email": ["L'email est obligatoire."]}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        user = User.objects.get(email__iexact=email)
-    except User.DoesNotExist:
-        return Response({"message": "If the email exists, a reset link was sent."}, status=status.HTTP_200_OK)
+    ok_payload = {"message": "Si l'email existe, un lien a été envoyé."}
+
+    user = User.objects.filter(email__iexact=email).first()
+    if not user or not user.is_active:
+        return Response(ok_payload, status=status.HTTP_200_OK)
 
     token = default_token_generator.make_token(user)
-    uid = str(user.pk)
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
-    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
-    reset_link = f"{frontend_url}/reset-password?uid={uid}&token={token}"
+    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173").rstrip("/")
+    reset_link = f"{frontend_url}/reset-password?uid={uidb64}&token={token}"
 
-    if getattr(settings, "EMAIL_HOST", None):
+    # ✅ DEV: montrer le lien
+    is_dev = getattr(settings, "DEBUG", False) or (getattr(settings, "ENV", "dev") == "dev")
+    if is_dev:
+        ok_payload["reset_link_dev"] = reset_link
+
+    # ✅ Envoi email (ne doit jamais casser l'API)
+    try:
         send_mail(
-            "Password reset",
-            f"Use this link to reset your password: {reset_link}",
+            "Réinitialisation de mot de passe",
+            f"Utilisez ce lien pour réinitialiser votre mot de passe : {reset_link}",
             getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@example.com"),
             [user.email],
-            fail_silently=True,
+            fail_silently=False,
         )
+    except Exception as e:
+        # ⚠️ Important: on ne renvoie pas 500 (sinon ton front croit que ça ne marche pas)
+        # On log juste pour debug
+        print("[forgot_password] Email send failed:", repr(e))
 
-    return Response(
-        {"message": "If the email exists, a reset link was sent.", "reset_link_dev": reset_link},
-        status=status.HTTP_200_OK
-    )
+    return Response(ok_payload, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def reset_password(request):
+    """
+    ✅ Reset password:
+    - POST { uid, token, new_password }
+    - uid = uidb64 (base64 safe)
+    """
     uid = request.data.get("uid")
     token = request.data.get("token")
     new_password = request.data.get("new_password")
@@ -173,16 +196,25 @@ def reset_password(request):
     if not uid or not token or not new_password:
         return Response({"detail": "uid, token, new_password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # ✅ decode uidb64
     try:
-        user = User.objects.get(pk=uid)
-    except User.DoesNotExist:
+        uid_int = force_str(urlsafe_base64_decode(uid))
+    except Exception:
+        return Response({"detail": "Invalid link"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.filter(pk=uid_int).first()
+    if not user:
         return Response({"detail": "Invalid link"}, status=status.HTTP_400_BAD_REQUEST)
 
     if not default_token_generator.check_token(user, token):
         return Response({"detail": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
 
+    if len(new_password) < 6:
+        return Response({"new_password": ["Mot de passe trop court (min 6)."]}, status=status.HTTP_400_BAD_REQUEST)
+
     user.set_password(new_password)
-    user.save()
+    user.save(update_fields=["password"])
+
     return Response({"message": "Password updated"}, status=status.HTTP_200_OK)
 
 
