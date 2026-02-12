@@ -1,7 +1,5 @@
 <template>
   <div class="zs-root">
-    <AppNavbar />
-
     <div class="container-fluid py-4 zs-admin">
       <!-- HERO -->
       <div class="zs-hero mb-3">
@@ -139,11 +137,7 @@
               </div>
 
               <!-- LINES -->
-              <div
-                v-for="(l, idx) in form.lignes"
-                :key="idx"
-                class="zs-line-card"
-              >
+              <div v-for="(l, idx) in form.lignes" :key="idx" class="zs-line-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <div class="fw-semibold">
                     <i class="fa-solid fa-tag me-2 text-primary"></i>
@@ -180,13 +174,7 @@
                 </div>
 
                 <div class="form-check mt-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    v-model="l.maj_prix_article"
-                    :disabled="loading"
-                    :id="`majPrix-${idx}`"
-                  />
+                  <input class="form-check-input" type="checkbox" v-model="l.maj_prix_article" :disabled="loading" :id="`majPrix-${idx}`" />
                   <label class="form-check-label small" :for="`majPrix-${idx}`">
                     Mettre à jour le prix de l’article
                   </label>
@@ -213,9 +201,7 @@
                 <span class="fw-bold">Historique</span>
                 <span class="zs-pill-count">{{ filtered.length }}</span>
               </div>
-              <div class="text-muted small">
-                Recherche par fournisseur
-              </div>
+              <div class="text-muted small">Recherche par fournisseur</div>
             </div>
 
             <div class="zs-panel-body p-0">
@@ -269,229 +255,17 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
-import AppNavbar from "@/components/AppNavbar.vue";
-import { AchatsAPI } from "@/services/achats";
-import { ArticlesAPI } from "@/services/articles";
-import { unwrapList } from "@/services/pagination";
+import { useAchatsView } from "@/views/achats/assets/js/useAchatsView";
 
-type Article = {
-  id: number;
-  nom_produit: string;
-  reference: string;
-  prix_achat: string;
-  prix_vente: string;
-  quantite_stock: number;
-};
-
-type Achat = any;
-
-const loading = ref(false);
-const error = ref("");
-
-const achats = ref<Achat[]>([]);
-const articles = ref<Article[]>([]);
-const search = ref("");
-
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return achats.value;
-  return achats.value.filter((x: any) => (x.fournisseur || "").toLowerCase().includes(q));
-});
-
-const form = ref<any>({
-  id: null as number | null,
-  fournisseur: "",
-  date_achat: null as string | null,
-  note: "",
-  lignes: [] as any[],
-});
-
-const isEditing = computed(() => !!form.value.id);
-
-function formatAr(value: number | string) {
-  const n = typeof value === "string" ? Number(value) : value;
-  if (Number.isNaN(n)) return "0 Ar";
-  return `${Math.round(n).toLocaleString("fr-FR")} Ar`;
-}
-
-function resetForm() {
-  form.value = { id: null, fournisseur: "", date_achat: null, note: "", lignes: [] };
-  error.value = "";
-}
-
-function addLine() {
-  form.value.lignes.push({
-    article: null,
-    quantite: 1,
-    prix_achat_unitaire: 0,
-    prix_vente_unitaire: 0,
-    maj_prix_article: true,
-  });
-}
-
-function removeLine(idx: number) {
-  form.value.lignes.splice(idx, 1);
-}
-
-function startCreate() {
-  resetForm();
-  addLine();
-}
-
-function startEdit(a: any) {
-  error.value = "";
-  form.value = {
-    id: a.id,
-    fournisseur: a.fournisseur || "",
-    date_achat: a.date_achat || null,
-    note: a.note || "",
-    lignes: (a.lignes || []).map((l: any) => ({
-      article: l.article,
-      quantite: l.quantite,
-      prix_achat_unitaire: l.prix_achat_unitaire,
-      prix_vente_unitaire: l.prix_vente_unitaire,
-      maj_prix_article: l.maj_prix_article ?? true,
-    })),
-  };
-  if (form.value.lignes.length === 0) addLine();
-}
-
-async function loadAll() {
-  loading.value = true;
-  error.value = "";
-  try {
-    const [r1, r2] = await Promise.all([
-      AchatsAPI.list(),
-      ArticlesAPI.list(),
-    ]);
-
-    achats.value = unwrapList<any>(r1.data);
-    articles.value = unwrapList<any>(r2.data);
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de charger les données.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function submit() {
-  error.value = "";
-
-  if (!form.value.lignes.length) {
-    error.value = "Ajoute au moins une ligne.";
-    return;
-  }
-  for (const l of form.value.lignes) {
-    if (!l.article) {
-      error.value = "Chaque ligne doit avoir un article.";
-      return;
-    }
-    if (!l.quantite || l.quantite < 1) {
-      error.value = "Quantité invalide.";
-      return;
-    }
-  }
-
-  loading.value = true;
-  try {
-    const payload = {
-      fournisseur: form.value.fournisseur,
-      date_achat: form.value.date_achat,
-      note: form.value.note,
-      lignes: form.value.lignes,
-    };
-
-    if (!form.value.id) await AchatsAPI.create(payload);
-    else await AchatsAPI.update(form.value.id, payload);
-
-    resetForm();
-    await loadAll();
-  } catch (e: any) {
-    const data = e?.response?.data;
-    if (data && typeof data === "object") {
-      const k = Object.keys(data)[0];
-      error.value = k ? `${k}: ${data[k]?.[0] ?? ""}` : "Erreur validation.";
-    } else {
-      error.value = e?.message || "Erreur lors de l'enregistrement.";
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function removeAchat(a: any) {
-  const ok = confirm(`Supprimer l'achat #${a.id} ? (Cela va enlever le stock ajouté)`);
-  if (!ok) return;
-
-  loading.value = true;
-  error.value = "";
-  try {
-    await AchatsAPI.remove(a.id);
-    await loadAll();
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de supprimer.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(loadAll);
+const {
+  loading, error,
+  achats, articles, search, filtered,
+  form, isEditing,
+  formatAr,
+  resetForm, addLine, removeLine,
+  startCreate, startEdit,
+  loadAll, submit, removeAchat,
+} = useAchatsView();
 </script>
 
-<style scoped>
-.min-width-0{ min-width:0; }
-
-/* Search compact */
-.zs-search{
-  display:flex; align-items:center; gap:.5rem;
-  padding: .35rem .6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(255,255,255,.8);
-}
-.zs-search i{ opacity:.7; }
-.zs-search-input{
-  border: none !important;
-  background: transparent !important;
-  padding: 0 !important;
-  min-width: 220px;
-}
-.zs-search-input:focus{ box-shadow:none !important; }
-
-/* Inputs */
-.zs-input{ border-radius: 12px; }
-
-/* Empty */
-.zs-empty{
-  border: 1px dashed rgba(0,0,0,.15);
-  border-radius: 14px;
-  padding: 12px;
-  color: rgba(108,117,125,1);
-  background: rgba(248,249,250,1);
-}
-
-/* Line card */
-.zs-line-card{
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 16px;
-  padding: 12px;
-  background: rgba(255,255,255,.9);
-  box-shadow: 0 10px 24px rgba(0,0,0,.05);
-  margin-bottom: 10px;
-}
-
-/* Table premium */
-.zs-table-wrap{ border-radius: 16px; overflow:hidden; }
-.zs-table thead th{
-  background: rgba(248,249,250,1);
-  font-weight: 700;
-  color: rgba(33,37,41,.75);
-  border-bottom: 1px solid rgba(0,0,0,.06);
-}
-.zs-table tbody tr:hover{ background: rgba(13,110,253,.04); }
-.zs-table td, .zs-table th{ padding: .85rem .9rem; }
-
-/* ellipsis */
-.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-</style>
+<style scoped src="@/views/achats/assets/css/AchatsView.css"></style>

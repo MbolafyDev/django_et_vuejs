@@ -1,0 +1,18 @@
+.min-width-0{ min-width:0; }
+.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.enc-wrap{
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.kpi-unset{ min-width: unset; }
+.kpi-name{ font-size: 1rem; }
+
+.zs-pill-soft--sm{
+  padding: 0.10rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}

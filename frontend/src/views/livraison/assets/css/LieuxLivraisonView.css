@@ -1,0 +1,37 @@
+.min-width-0{ min-width:0; }
+
+/* Search “zs” */
+.zs-search{
+  display:flex; align-items:center; gap:.5rem;
+  padding: .55rem .75rem;
+  border-radius: 14px;
+  background: rgba(255,255,255,.9);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 24px rgba(0,0,0,.06);
+}
+.zs-search i{ opacity:.65; }
+.zs-search-input{
+  border:0; outline:0; background:transparent;
+  min-width: 220px;
+}
+.zs-search-clear{
+  border:0; background:transparent; opacity:.7;
+}
+.zs-search-clear:hover{ opacity:1; }
+
+/* Pills */
+.zs-pill-ok{ background: rgba(25,135,84,.14); border: 1px solid rgba(25,135,84,.22); }
+.zs-pill-muted{ opacity:.75; }
+
+/* Table look */
+.zs-table-wrap{ border-radius: 16px; overflow:hidden; }
+.zs-table thead th{
+  background: rgba(248,249,250,1);
+  font-weight: 700;
+  color: rgba(33,37,41,.75);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.zs-table tbody tr:hover{ background: rgba(13,110,253,.04); }
+.zs-table td, .zs-table th{ padding: .85rem .9rem; }
+
+.zs-input{ border-radius: 12px; }

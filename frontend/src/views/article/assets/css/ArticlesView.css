@@ -1,0 +1,57 @@
+.min-width-0{ min-width:0; }
+
+/* Search compact (modern) */
+.zs-search{
+  display:flex; align-items:center; gap:.5rem;
+  padding: .35rem .6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.10);
+  background: rgba(255,255,255,.85);
+  box-shadow: 0 6px 16px rgba(15,23,42,.06);
+}
+.zs-search i{ opacity:.7; }
+.zs-search-input{
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  min-width: 240px;
+}
+.zs-search-input:focus{ box-shadow:none !important; }
+
+.zs-input{ border-radius: 12px; }
+
+/* Table premium */
+.zs-table-wrap{ border-radius: 16px; overflow:hidden; }
+.zs-table thead th{
+  background: rgba(248,250,252,1);
+  font-weight: 700;
+  color: rgba(15,23,42,.70);
+  border-bottom: 1px solid rgba(15,23,42,.08);
+}
+.zs-table tbody tr:hover{ background: rgba(13,110,253,.04); }
+.zs-table td, .zs-table th{ padding: .85rem .9rem; }
+
+/* Photos */
+.zs-photo-thumb{
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,.10);
+  box-shadow: 0 10px 24px rgba(15,23,42,.06);
+}
+.zs-photo-preview{
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid rgba(15,23,42,.12);
+  box-shadow: 0 12px 28px rgba(15,23,42,.08);
+}
+.zs-mini-note{ opacity:.8; }
+
+/* ellipsis & mono */
+.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.zs-mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}

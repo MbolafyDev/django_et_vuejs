@@ -1,7 +1,5 @@
 <template>
   <div class="zs-root">
-    <AppNavbar />
-
     <div class="container-fluid py-4 zs-admin">
       <!-- HERO -->
       <div class="zs-hero mb-3">
@@ -78,12 +76,7 @@
               <span class="ms-2 d-none d-sm-inline">Nouveau</span>
             </button>
 
-            <button
-              class="btn btn-outline-secondary zs-btn zs-btn-neo"
-              :disabled="loading"
-              @click="loadClients"
-              title="Rafraîchir"
-            >
+            <button class="btn btn-outline-secondary zs-btn zs-btn-neo" :disabled="loading" @click="loadClients" title="Rafraîchir">
               <i class="fa-solid fa-rotate"></i>
               <span class="ms-2 d-none d-sm-inline">Rafraîchir</span>
             </button>
@@ -106,11 +99,7 @@
                 <span class="fw-bold">{{ isEditing ? "Modifier client" : "Nouveau client" }}</span>
               </div>
 
-              <button
-                v-if="isEditing"
-                class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo"
-                @click="resetForm"
-              >
+              <button v-if="isEditing" class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="resetForm">
                 Annuler
               </button>
             </div>
@@ -170,9 +159,7 @@
                 <span class="zs-pill-count">{{ filteredClients.length }}</span>
               </div>
 
-              <div class="text-muted small">
-                Nom • Adresse • Contact
-              </div>
+              <div class="text-muted small">Nom • Adresse • Contact</div>
             </div>
 
             <div class="zs-panel-body p-0">
@@ -224,170 +211,19 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
-import AppNavbar from "@/components/AppNavbar.vue";
-import { ClientsAPI } from "@/services/clients";
+import { useClientsView } from "@/views/clients/assets/js/useClientsView";
 
-type Client = {
-  id: number;
-  nom: string;
-  adresse: string;
-  contact: string;
-};
-
-const loading = ref(false);
-const error = ref("");
-
-const clients = ref<Client[]>([]);
-const search = ref("");
-
-const filteredClients = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return clients.value;
-  return clients.value.filter((c) => {
-    return (
-      (c.nom || "").toLowerCase().includes(q) ||
-      (c.adresse || "").toLowerCase().includes(q) ||
-      (c.contact || "").toLowerCase().includes(q)
-    );
-  });
-});
-
-const form = ref<{ id?: number; nom: string; adresse: string; contact: string }>({
-  nom: "",
-  adresse: "",
-  contact: "",
-});
-
-const isEditing = computed(() => !!form.value.id);
-
-function resetForm() {
-  form.value = { nom: "", adresse: "", contact: "" };
-  error.value = "";
-}
-
-async function loadClients() {
-  loading.value = true;
-  error.value = "";
-  try {
-    const res = await ClientsAPI.list();
-    clients.value = res.data;
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de charger les clients.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-function startCreate() {
-  resetForm();
-}
-
-function startEdit(c: Client) {
-  error.value = "";
-  form.value = {
-    id: c.id,
-    nom: c.nom || "",
-    adresse: c.adresse || "",
-    contact: c.contact || "",
-  };
-}
-
-async function submit() {
-  error.value = "";
-
-  if (!form.value.nom.trim()) {
-    error.value = "Le champ 'nom' est obligatoire.";
-    return;
-  }
-
-  loading.value = true;
-
-  try {
-    if (!form.value.id) {
-      const res = await ClientsAPI.create({
-        nom: form.value.nom.trim(),
-        adresse: form.value.adresse.trim(),
-        contact: form.value.contact.trim(),
-      });
-      clients.value = [res.data, ...clients.value];
-      resetForm();
-    } else {
-      const id = form.value.id;
-      const res = await ClientsAPI.update(id, {
-        nom: form.value.nom.trim(),
-        adresse: form.value.adresse.trim(),
-        contact: form.value.contact.trim(),
-      });
-      clients.value = clients.value.map((c) => (c.id === id ? res.data : c));
-      resetForm();
-    }
-  } catch (e: any) {
-    const data = e?.response?.data;
-    if (data && typeof data === "object") {
-      const firstKey = Object.keys(data)[0];
-      error.value = firstKey ? `${firstKey}: ${data[firstKey]?.[0] ?? ""}` : "Erreur validation.";
-    } else {
-      error.value = e?.message || "Erreur lors de l'enregistrement.";
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function removeClient(c: Client) {
-  const ok = confirm(`Supprimer le client "${c.nom}" ?`);
-  if (!ok) return;
-
-  loading.value = true;
-  error.value = "";
-
-  try {
-    await ClientsAPI.remove(c.id);
-    clients.value = clients.value.filter((x) => x.id !== c.id);
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de supprimer le client.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(loadClients);
+const {
+  loading, error,
+  clients, search, filteredClients,
+  form, isEditing,
+  resetForm,
+  loadClients,
+  startCreate,
+  startEdit,
+  submit,
+  removeClient,
+} = useClientsView();
 </script>
 
-<style scoped>
-.min-width-0{ min-width:0; }
-
-/* Search compact (même style que tes pages zs) */
-.zs-search{
-  display:flex; align-items:center; gap:.5rem;
-  padding: .35rem .6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(255,255,255,.8);
-}
-.zs-search i{ opacity:.7; }
-.zs-search-input{
-  border: none !important;
-  background: transparent !important;
-  padding: 0 !important;
-  min-width: 280px;
-}
-.zs-search-input:focus{ box-shadow:none !important; }
-
-/* Inputs */
-.zs-input{ border-radius: 12px; }
-
-/* Table premium */
-.zs-table-wrap{ border-radius: 16px; overflow:hidden; }
-.zs-table thead th{
-  background: rgba(248,249,250,1);
-  font-weight: 700;
-  color: rgba(33,37,41,.75);
-  border-bottom: 1px solid rgba(0,0,0,.06);
-}
-.zs-table tbody tr:hover{ background: rgba(13,110,253,.04); }
-.zs-table td, .zs-table th{ padding: .85rem .9rem; }
-
-.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-</style>
+<style scoped src="@/views/clients/assets/css/ClientsView.css"></style>

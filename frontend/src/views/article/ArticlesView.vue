@@ -1,7 +1,5 @@
 <template>
   <div class="zs-root">
-    <AppNavbar />
-
     <div class="container-fluid py-4 zs-admin">
       <!-- HERO -->
       <div class="zs-hero mb-3">
@@ -147,11 +145,7 @@
                 />
 
                 <div class="mt-2 d-flex gap-2 align-items-center" v-if="photoPreview || form.photo_url">
-                  <img
-                    :src="photoPreview || form.photo_url"
-                    alt="Aperçu"
-                    class="zs-photo-preview"
-                  />
+                  <img :src="photoPreview || form.photo_url" alt="Aperçu" class="zs-photo-preview" />
                   <div class="small text-muted">
                     Aperçu de la photo
                     <div class="zs-mini-note">Astuce : photo carrée = plus propre.</div>
@@ -180,9 +174,7 @@
                 <span class="zs-pill-count">{{ filteredArticles.length }}</span>
               </div>
 
-              <div class="text-muted small">
-                Nom / Référence / Photo
-              </div>
+              <div class="text-muted small">Nom / Référence / Photo</div>
             </div>
 
             <div class="zs-panel-body p-0">
@@ -208,12 +200,7 @@
                   <tbody>
                     <tr v-for="a in filteredArticles" :key="a.id">
                       <td>
-                        <img
-                          v-if="a.photo_url"
-                          :src="a.photo_url"
-                          alt="photo"
-                          class="zs-photo-thumb"
-                        />
+                        <img v-if="a.photo_url" :src="a.photo_url" alt="photo" class="zs-photo-thumb" />
                         <span v-else class="text-muted small">—</span>
                       </td>
 
@@ -250,244 +237,21 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
-import AppNavbar from "@/components/AppNavbar.vue";
-import { ArticlesAPI } from "@/services/articles";
+import { useArticlesView } from "@/views/article/assets/js/useArticlesView";
 
-type Article = {
-  id: number;
-  nom_produit: string;
-  reference: string;
-  prix_achat: string | number;
-  prix_vente: string | number;
-  description?: string | null;
-  photo_url?: string | null;
-};
-
-const loading = ref(false);
-const error = ref("");
-const articles = ref<Article[]>([]);
-const search = ref("");
-
-const filteredArticles = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return articles.value;
-  return articles.value.filter((a) =>
-    (a.nom_produit || "").toLowerCase().includes(q) ||
-    (a.reference || "").toLowerCase().includes(q)
-  );
-});
-
-const form = ref<{
-  id?: number;
-  nom_produit: string;
-  reference: string;
-  prix_achat: string;
-  prix_vente: string;
-  description: string;
-  photo_url?: string | null;
-}>( {
-  nom_produit: "",
-  reference: "",
-  prix_achat: "0",
-  prix_vente: "0",
-  description: "",
-  photo_url: null,
-});
-
-const photoFile = ref<File | null>(null);
-const photoPreview = ref<string | null>(null);
-
-const isEditing = computed(() => !!form.value.id);
-
-function formatAr(value: string | number) {
-  const n = typeof value === "string" ? Number(value) : value;
-  if (Number.isNaN(n)) return "0 Ar";
-  return `${Math.round(n).toLocaleString("fr-FR")} Ar`;
-}
-
-function onPhotoChange(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0] || null;
-  photoFile.value = file;
-
-  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
-  photoPreview.value = file ? URL.createObjectURL(file) : null;
-}
-
-function resetForm() {
-  form.value = {
-    nom_produit: "",
-    reference: "",
-    prix_achat: "0",
-    prix_vente: "0",
-    description: "",
-    photo_url: null,
-  };
-  error.value = "";
-
-  photoFile.value = null;
-  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
-  photoPreview.value = null;
-}
-
-async function loadArticles() {
-  loading.value = true;
-  error.value = "";
-  try {
-    const res = await ArticlesAPI.list();
-    articles.value = res.data;
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de charger les articles.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-function startCreate() {
-  resetForm();
-}
-
-function startEdit(a: Article) {
-  error.value = "";
-  form.value = {
-    id: a.id,
-    nom_produit: a.nom_produit || "",
-    reference: a.reference || "",
-    prix_achat: String(a.prix_achat ?? "0"),
-    prix_vente: String(a.prix_vente ?? "0"),
-    description: (a.description as any) || "",
-    photo_url: a.photo_url ?? null,
-  };
-
-  photoFile.value = null;
-  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
-  photoPreview.value = null;
-}
-
-async function submit() {
-  error.value = "";
-
-  if (!form.value.nom_produit.trim()) {
-    error.value = "Le champ 'nom_produit' est obligatoire.";
-    return;
-  }
-  if (!form.value.reference.trim()) {
-    error.value = "Le champ 'reference' est obligatoire.";
-    return;
-  }
-
-  loading.value = true;
-
-  const fd = new FormData();
-  fd.append("nom_produit", form.value.nom_produit.trim());
-  fd.append("reference", form.value.reference.trim());
-  fd.append("prix_achat", String(form.value.prix_achat ?? "0"));
-  fd.append("prix_vente", String(form.value.prix_vente ?? "0"));
-  fd.append("description", form.value.description.trim());
-
-  if (photoFile.value) {
-    fd.append("photo", photoFile.value);
-  }
-
-  try {
-    if (!form.value.id) {
-      const res = await ArticlesAPI.create(fd);
-      articles.value = [res.data, ...articles.value];
-      resetForm();
-    } else {
-      const id = form.value.id;
-      const res = await ArticlesAPI.update(id, fd);
-      articles.value = articles.value.map((x) => (x.id === id ? res.data : x));
-      resetForm();
-    }
-  } catch (e: any) {
-    const data = e?.response?.data;
-    if (data && typeof data === "object") {
-      const firstKey = Object.keys(data)[0];
-      error.value = firstKey ? `${firstKey}: ${data[firstKey]?.[0] ?? ""}` : "Erreur validation.";
-    } else {
-      error.value = e?.message || "Erreur lors de l'enregistrement.";
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function removeArticle(a: Article) {
-  const ok = confirm(`Supprimer l'article "${a.nom_produit}" ?`);
-  if (!ok) return;
-
-  loading.value = true;
-  error.value = "";
-
-  try {
-    await ArticlesAPI.remove(a.id);
-    articles.value = articles.value.filter((x) => x.id !== a.id);
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de supprimer l'article.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(loadArticles);
+const {
+  loading, error,
+  articles, search, filteredArticles,
+  form, photoPreview, isEditing,
+  formatAr,
+  onPhotoChange,
+  resetForm,
+  loadArticles,
+  startCreate,
+  startEdit,
+  submit,
+  removeArticle,
+} = useArticlesView();
 </script>
 
-<style scoped>
-.min-width-0{ min-width:0; }
-
-/* Search compact */
-.zs-search{
-  display:flex; align-items:center; gap:.5rem;
-  padding: .35rem .6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(255,255,255,.8);
-}
-.zs-search i{ opacity:.7; }
-.zs-search-input{
-  border: none !important;
-  background: transparent !important;
-  padding: 0 !important;
-  min-width: 240px;
-}
-.zs-search-input:focus{ box-shadow:none !important; }
-
-/* Inputs */
-.zs-input{ border-radius: 12px; }
-
-/* Table premium */
-.zs-table-wrap{ border-radius: 16px; overflow:hidden; }
-.zs-table thead th{
-  background: rgba(248,249,250,1);
-  font-weight: 700;
-  color: rgba(33,37,41,.75);
-  border-bottom: 1px solid rgba(0,0,0,.06);
-}
-.zs-table tbody tr:hover{ background: rgba(13,110,253,.04); }
-.zs-table td, .zs-table th{ padding: .85rem .9rem; }
-
-/* Photos */
-.zs-photo-thumb{
-  width: 44px;
-  height: 44px;
-  object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,.08);
-  box-shadow: 0 10px 24px rgba(0,0,0,.06);
-}
-.zs-photo-preview{
-  width: 76px;
-  height: 76px;
-  object-fit: cover;
-  border-radius: 16px;
-  border: 1px solid rgba(0,0,0,.10);
-  box-shadow: 0 10px 24px rgba(0,0,0,.08);
-}
-.zs-mini-note{ opacity:.8; }
-
-/* ellipsis & mono */
-.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.zs-mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-</style>
+<style scoped src="@/views/article/assets/css/ArticlesView.css"></style>

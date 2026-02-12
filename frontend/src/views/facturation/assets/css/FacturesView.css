@@ -1,0 +1,23 @@
+.min-width-0 { min-width: 0; }
+
+/* Pill du titre : plus petit */
+.zs-pill-soft--sm{
+  padding: 0.10rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+.zs-pill-soft--sm i{
+  font-size: 0.68rem !important;
+  line-height: 1 !important;
+  vertical-align: -1px;
+}
+
+/* compteur du panel : plus petit */
+.zs-pill-count--sm{
+  padding: 0.08rem 0.42rem !important;
+  font-size: 0.66rem !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+}

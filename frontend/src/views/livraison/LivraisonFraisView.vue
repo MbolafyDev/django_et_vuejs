@@ -1,9 +1,6 @@
-<!-- FraisLivraisonView.vue -->
 <template>
-  <div class="zs-root">
-    <AppNavbar />
-
-    <div class="container-fluid py-4 zs-admin">
+  <div class="zs-admin">
+    <div class="container-fluid py-4">
       <!-- HERO -->
       <div class="zs-hero mb-3">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
@@ -217,10 +214,7 @@
                       </td>
                       <td class="text-end">{{ formatAr(x.frais_calcule) }}</td>
                       <td class="text-end">
-                        <span
-                          class="zs-pill-soft"
-                          :class="x.frais_override === null ? 'zs-pill-muted' : 'zs-pill-warn'"
-                        >
+                        <span class="zs-pill-soft" :class="x.frais_override === null ? 'zs-pill-muted' : 'zs-pill-warn'">
                           {{ x.frais_override === null ? "—" : formatAr(x.frais_override) }}
                         </span>
                       </td>
@@ -248,226 +242,21 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from "vue";
-import AppNavbar from "@/components/AppNavbar.vue";
-import { LivraisonAPI, type FraisLivraison, type LieuLivraison, type LieuCategorie } from "@/services/livraison";
-import { unwrapList } from "@/services/pagination";
+import { useFraisLivraison } from "@/views/livraison/assets/js/useFraisLivraison";
 
-const loading = ref(false);
-const error = ref("");
+const {
+  loading, error,
 
-const lieux = ref<LieuLivraison[]>([]);
-const fraisList = ref<FraisLivraison[]>([]);
-const search = ref("");
+  lieux, fraisList,
+  search, filteredFrais,
 
-const form = ref<{ id?: number; lieu: number | null; frais_override: number | null; note: string }>({
-  lieu: null,
-  frais_override: null,
-  note: "",
-});
+  form, overrideEnabled, preview, isEditing,
 
-const overrideEnabled = ref(false);
-const preview = ref<{ frais_calcule: number; frais_final: number } | null>(null);
+  labelCat, formatAr,
 
-const isEditing = computed(() => !!form.value.id);
-
-const filteredFrais = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return fraisList.value;
-  return fraisList.value.filter((x) => (x.lieu_detail?.nom || "").toLowerCase().includes(q));
-});
-
-function labelCat(c: LieuCategorie) {
-  const map: Record<LieuCategorie, string> = {
-    VILLE: "Ville",
-    PERIPHERIE: "Périphérie",
-    PLUS_PERIPHERIE: "Plus périphérie",
-    PROVINCE: "Province",
-    AUTRE: "Autre",
-  };
-  return map[c] || c;
-}
-
-function formatAr(n: number) {
-  return `${Math.round(n || 0).toLocaleString("fr-FR")} Ar`;
-}
-
-function resetForm() {
-  form.value = { lieu: null, frais_override: null, note: "" };
-  overrideEnabled.value = false;
-  preview.value = null;
-  error.value = "";
-}
-
-function startCreate() {
-  resetForm();
-}
-
-function startEdit(x: FraisLivraison) {
-  error.value = "";
-  form.value = { id: x.id, lieu: x.lieu, frais_override: x.frais_override, note: x.note || "" };
-  overrideEnabled.value = x.frais_override !== null;
-}
-
-async function loadFrais() {
-  loading.value = true;
-  error.value = "";
-  try {
-    const [r1, r2] = await Promise.all([
-      LivraisonAPI.listLieux({ actif: 1 }),
-      LivraisonAPI.listFrais(),
-    ]);
-
-    lieux.value = unwrapList<LieuLivraison>(r1.data);
-
-    const raw = unwrapList<any>(r2.data);
-    fraisList.value = raw.map((x) => ({
-      ...x,
-      frais_calcule: x.frais_calcule ?? x.frais_calculé ?? 0,
-    }));
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de charger les frais.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-watch(overrideEnabled, (v) => {
-  if (!v) form.value.frais_override = null;
-});
-
-// debounce preview + ignore anciennes requêtes
-let tPrev: any = null;
-let previewReqId = 0;
-
-watch(
-  () => [form.value.lieu, overrideEnabled.value, form.value.frais_override] as const,
-  () => {
-    preview.value = null;
-    if (!form.value.lieu) return;
-
-    clearTimeout(tPrev);
-    const current = ++previewReqId;
-
-    tPrev = setTimeout(async () => {
-      try {
-        const res = await LivraisonAPI.calculer({
-          lieu: form.value.lieu as number,
-          frais_override: overrideEnabled.value ? form.value.frais_override : null,
-        });
-
-        if (current !== previewReqId) return;
-
-        preview.value = {
-          frais_calcule: res.data.frais_calcule ?? res.data.frais_calculé ?? 0,
-          frais_final: res.data.frais_final ?? 0,
-        };
-      } catch {
-        if (current !== previewReqId) return;
-        preview.value = null;
-      }
-    }, 250);
-  },
-  { immediate: true }
-);
-
-async function submit() {
-  error.value = "";
-  if (!form.value.lieu) {
-    error.value = "Le champ 'lieu' est obligatoire.";
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const payload = {
-      lieu: form.value.lieu,
-      frais_override: overrideEnabled.value ? form.value.frais_override : null,
-      note: form.value.note,
-    };
-
-    if (!form.value.id) await LivraisonAPI.createFrais(payload);
-    else await LivraisonAPI.updateFrais(form.value.id, payload);
-
-    resetForm();
-    await loadFrais();
-  } catch (e: any) {
-    const data = e?.response?.data;
-    if (data && typeof data === "object") {
-      const k = Object.keys(data)[0];
-      error.value = k ? `${k}: ${data[k]?.[0] ?? ""}` : "Erreur validation.";
-    } else {
-      error.value = e?.message || "Erreur lors de l'enregistrement.";
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function removeFrais(x: FraisLivraison) {
-  const ok = confirm(`Supprimer le frais de "${x.lieu_detail?.nom}" ?`);
-  if (!ok) return;
-
-  loading.value = true;
-  error.value = "";
-  try {
-    await LivraisonAPI.removeFrais(x.id);
-    await loadFrais();
-  } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || "Impossible de supprimer le frais.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(loadFrais);
+  resetForm, startCreate, startEdit,
+  loadFrais, submit, removeFrais,
+} = useFraisLivraison();
 </script>
 
-<style scoped>
-.min-width-0{ min-width:0; }
-
-/* Search “zs” */
-.zs-search{
-  display:flex; align-items:center; gap:.5rem;
-  padding: .55rem .75rem;
-  border-radius: 14px;
-  background: rgba(255,255,255,.9);
-  border: 1px solid rgba(0,0,0,.06);
-  box-shadow: 0 10px 24px rgba(0,0,0,.06);
-}
-.zs-search i{ opacity:.65; }
-.zs-search-input{
-  border:0; outline:0; background:transparent;
-  min-width: 220px;
-}
-.zs-search-clear{
-  border:0; background:transparent; opacity:.7;
-}
-.zs-search-clear:hover{ opacity:1; }
-
-/* Pills */
-.zs-pill-muted{ opacity:.75; }
-.zs-pill-warn{ background: rgba(255,193,7,.16); border: 1px solid rgba(255,193,7,.26); }
-
-/* Table look (premium) */
-.zs-table-wrap{ border-radius: 16px; overflow:hidden; }
-.zs-table thead th{
-  background: rgba(248,249,250,1);
-  font-weight: 700;
-  color: rgba(33,37,41,.75);
-  border-bottom: 1px solid rgba(0,0,0,.06);
-}
-.zs-table tbody tr:hover{ background: rgba(13,110,253,.04); }
-.zs-table td, .zs-table th{ padding: .85rem .9rem; }
-.zs-input{ border-radius: 12px; }
-
-.zs-preview{
-  border-radius: 14px;
-  border: 1px dashed rgba(13,110,253,.35);
-  background: rgba(13,110,253,.06);
-  padding: .75rem .85rem;
-}
-.zs-preview-row{
-  display:flex; justify-content:space-between; align-items:center;
-}
-</style>
+<style scoped src="@/views/livraison/assets/css/FraisLivraisonView.css"></style>

@@ -1,8 +1,6 @@
 <template>
-  <div class="zs-root">
-    <AppNavbar />
-
-    <div class="container-fluid py-4 zs-admin">
+  <div class="zs-admin">
+    <div class="container-fluid py-4">
       <!-- HERO -->
       <div class="zs-hero mb-3">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
@@ -11,7 +9,6 @@
               <div class="zs-dot"></div>
               <h4 class="mb-0 zs-title">Encaissement</h4>
 
-              <!-- ✅ plus petit -->
               <span class="zs-pill-soft zs-pill-soft--sm">
                 <i class="fa-solid fa-cash-register me-1"></i> Paiements & Statuts
               </span>
@@ -62,7 +59,6 @@
 
           <!-- actions -->
           <div class="d-flex gap-2 flex-wrap align-items-center">
-            <!-- ✅ Switch Table/Card (réutilise FacturationToolbar) -->
             <FacturationToolbar
               :loading="loading"
               :loadingBulkPdf="false"
@@ -146,7 +142,6 @@
           <div class="d-flex align-items-center gap-2 min-width-0">
             <i class="fa-solid fa-list me-1 text-primary"></i>
             <span class="fw-bold">Commandes</span>
-            <!-- ✅ compteur petit -->
             <span class="zs-pill-count zs-pill-count--sm">{{ count }}</span>
           </div>
 
@@ -170,7 +165,7 @@
           <div v-if="loading" class="p-3 text-muted">Chargement...</div>
 
           <div v-else>
-            <!-- ===== MODE TABLE ===== -->
+            <!-- TABLE -->
             <div v-if="viewMode === 'table'" class="zs-list">
               <div class="zs-list-head">
                 <div class="zs-h-id">#</div>
@@ -208,7 +203,6 @@
                     <div class="small">{{ c.date_livraison || "-" }}</div>
                   </div>
 
-                  <!-- ✅ BADGE TABLE PETIT -->
                   <div class="zs-cell zs-pay">
                     <span class="zs-status zs-status--table" :class="paiementClass(c.paiement_statut)">
                       <span class="zs-status-dot"></span>
@@ -246,7 +240,7 @@
                     </div>
                   </div>
 
-                  <!-- ✅ sub line (MOBILE ONLY) -->
+                  <!-- mobile summary -->
                   <div class="zs-sub">
                     <div class="zs-subitem">
                       <div class="zs-subkey"><i class="fa-solid fa-user me-1"></i> Client</div>
@@ -280,7 +274,7 @@
               </div>
             </div>
 
-            <!-- ===== MODE CARD ===== -->
+            <!-- CARDS -->
             <div v-else class="zs-cards">
               <div v-if="rows.length === 0" class="text-center text-muted py-4">
                 <i class="fa-solid fa-circle-info me-1"></i> Aucune commande
@@ -375,252 +369,41 @@
 </template>
 
 <script setup lang="ts">
-import AppNavbar from "@/components/AppNavbar.vue";
 import FacturationToolbar from "@/components/facturation/FacturationToolbar.vue";
-import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
-import { EncaissementAPI, type EncaissementCommande } from "@/services/encaissement";
+import { useEncaissementList } from "@/views/encaissement/assets/js/useEncaissementList";
 
-const router = useRouter();
-const loading = ref(false);
+const {
+  loading,
+  rows,
+  count,
+  paiement_statut,
+  q,
+  page,
+  pageSize,
+  showFilters,
+  viewMode,
 
-const rows = ref<EncaissementCommande[]>([]);
-const count = ref(0);
+  hasActiveFilters,
+  hasNext,
 
-const paiement_statut = ref<string>("");
-const q = ref<string>("");
+  money,
+  paiementLabel,
+  paiementClass,
+  paiementIcon,
 
-const page = ref(1);
-const pageSize = ref(20);
+  toggleFilters,
+  resetFilters,
+  applyFilters,
+  nextPage,
+  prevPage,
+  onPageSizeChange,
+  goEncaisser,
+  goPending,
+  annuler,
+  load,
 
-const showFilters = ref(false);
-function toggleFilters(){ showFilters.value = !showFilters.value; }
-
-const viewMode = ref<"table" | "card">("table");
-const noop = () => {}; // pour les events PDF non utilisés
-
-const hasActiveFilters = computed(() => !!(paiement_statut.value || q.value.trim()));
-const hasNext = computed(() => page.value * pageSize.value < count.value);
-
-function money(v: number) {
-  try { return new Intl.NumberFormat("fr-FR").format(v) + " Ar"; }
-  catch { return `${v} Ar`; }
-}
-
-function paiementLabel(s: any){
-  if (s === "PAYEE") return "Payée";
-  if (s === "ANNULEE") return "Annulée";
-  return "En attente";
-}
-
-function paiementClass(s: any){
-  if (s === "PAYEE") return "zs-st zs-st-done";
-  if (s === "ANNULEE") return "zs-st zs-st-neutral";
-  return "zs-st zs-st-ship";
-}
-
-function paiementIcon(s: any){
-  if (s === "PAYEE") return "fa-circle-check";
-  if (s === "ANNULEE") return "fa-circle-xmark";
-  return "fa-hourglass-half";
-}
-
-function goEncaisser(id: number) {
-  router.push({ name: "encaissement_encaisser", params: { id } });
-}
-
-function goPending() {
-  paiement_statut.value = "EN_ATTENTE";
-  page.value = 1;
-  load();
-}
-
-function resetFilters() {
-  paiement_statut.value = "";
-  q.value = "";
-  page.value = 1;
-  load();
-}
-
-function applyFilters() {
-  page.value = 1;
-  load();
-}
-
-function nextPage() {
-  if (!hasNext.value) return;
-  page.value += 1;
-  load();
-}
-
-function prevPage() {
-  if (page.value <= 1) return;
-  page.value -= 1;
-  load();
-}
-
-function onPageSizeChange(){
-  page.value = 1;
-  load();
-}
-
-async function annuler(id: number) {
-  if (!confirm("Annuler le paiement de cette commande ?")) return;
-  loading.value = true;
-  try {
-    await EncaissementAPI.annulerPaiement(id, { note: "Annulation depuis l'écran encaissement." });
-    await load();
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function load() {
-  loading.value = true;
-  try {
-    const params: any = {
-      paiement_statut: paiement_statut.value || undefined,
-      q: q.value || undefined,
-      page: page.value,
-      page_size: pageSize.value,
-    };
-
-    const res = await EncaissementAPI.listCommandes(params);
-    const data = res.data as any;
-
-    rows.value = data.results || [];
-    count.value = data.count || 0;
-  } finally {
-    loading.value = false;
-  }
-}
-
-load();
+  noop,
+} = useEncaissementList();
 </script>
 
-<style scoped>
-.min-width-0{ min-width:0; }
-
-.zs-pill-soft--sm{
-  padding: 0.10rem 0.42rem !important;
-  font-size: 0.66rem !important;
-  line-height: 1 !important;
-  border-radius: 999px !important;
-  white-space: nowrap;
-}
-
-.zs-dot-mini{
-  width: 8px; height: 8px;
-  border-radius: 999px;
-  background: rgba(13,110,253,1);
-  box-shadow: 0 0 0 4px rgba(13,110,253,.12);
-}
-
-/* ✅ mapping colonnes */
-.zs-list-head{
-  grid-template-columns: 90px 1.2fr 1fr 160px 140px 170px 140px 1.2fr 240px !important;
-}
-.zs-row{
-  grid-template-columns: 90px 1.2fr 1fr 160px 140px 170px 140px 1.2fr 240px !important;
-}
-
-.zs-h-id{ grid-column: 1; }
-.zs-h-client{ grid-column: 2; }
-.zs-h-contact{ grid-column: 3; }
-.zs-h-total{ grid-column: 4; }
-.zs-h-liv{ grid-column: 5; }
-.zs-h-pay{ grid-column: 6; }
-.zs-h-mode{ grid-column: 7; }
-.zs-h-ref{ grid-column: 8; }
-.zs-h-actions{ grid-column: 9; }
-
-.zs-id{ grid-column: 1; }
-.zs-client{ grid-column: 2; }
-.zs-contact{ grid-column: 3; }
-.zs-total{ grid-column: 4; }
-.zs-liv{ grid-column: 5; }
-.zs-pay{ grid-column: 6; }
-.zs-mode{ grid-column: 7; }
-.zs-ref{ grid-column: 8; }
-.zs-actions{ grid-column: 9; }
-
-.zs-ellipsis2{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-/* ✅ FIX IMPORTANT: cacher le bloc résumé sur desktop */
-.zs-sub{ display: none; }
-
-/* ✅ mobile */
-@media (max-width: 992px){
-  .zs-list-head{ display:none; }
-  .zs-row{
-    grid-template-columns: 1fr !important;
-    gap: 8px !important;
-    padding: 12px 12px !important;
-  }
-  .zs-id,.zs-client,.zs-contact,.zs-total,.zs-liv,.zs-pay,.zs-mode,.zs-ref,.zs-actions{ grid-column:1 !important; }
-
-  .zs-sub{
-    display: grid;
-    grid-column: 1 !important;
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* ===== Card mode ===== */
-.zs-cards{ background: rgba(255,255,255,.70); }
-.zs-cards-grid{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  padding: 12px;
-}
-@media (max-width: 1200px){
-  .zs-cards-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 768px){
-  .zs-cards-grid{ grid-template-columns: 1fr; }
-}
-
-.zs-card{
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 14px;
-  background: rgba(255,255,255,.85);
-  box-shadow: 0 10px 30px rgba(0,0,0,.06);
-  overflow:hidden;
-}
-
-.zs-card-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 10px;
-  padding: 12px 12px 10px;
-  border-bottom: 1px solid rgba(0,0,0,.06);
-}
-.zs-card-body{
-  padding: 10px 12px 12px;
-  display:grid;
-  gap: 8px;
-}
-.zs-card-row{
-  display:grid;
-  grid-template-columns: 90px 1fr;
-  gap: 10px;
-  align-items:center;
-}
-.zs-k{ font-size: .78rem; color: rgba(0,0,0,.55); }
-.zs-v{ min-width: 0; }
-.zs-card-actions{
-  display:flex;
-  gap: 8px;
-  justify-content:flex-end;
-  padding: 10px 12px 12px;
-}
-
-/* badge statut compact dans les cards */
-.zs-card-status{
-  padding: 0.18rem 0.5rem !important;
-  font-size: .72rem !important;
-  line-height: 1 !important;
-}
-</style>
+<style scoped src="@/views/encaissement/assets/css/EncaissementListView.css"></style>

@@ -1,170 +1,5 @@
-<script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from "vue";
-import AppNavbar from "@/components/AppNavbar.vue";
-import Modal from "bootstrap/js/dist/modal";
-import { ChargeAPI, type Charge, type ChargeCategorie } from "@/services/charge";
-
-const loading = ref(false);
-const saving = ref(false);
-const err = ref("");
-const ok = ref("");
-
-const items = ref<Charge[]>([]);
-const categories = ref<ChargeCategorie[]>([]);
-
-const filters = ref({
-  q: "",
-  categorie: "",
-  statut: "",
-  date_from: "",
-  date_to: "",
-});
-
-const stats = ref<any>(null);
-
-/* ===== Modal ===== */
-const modalEl = ref<HTMLElement | null>(null);
-let modal: Modal | null = null;
-
-const editingId = ref<number | null>(null);
-
-const form = ref({
-  date_charge: new Date().toISOString().slice(0, 10),
-  categorie: "" as any,
-  libelle: "",
-  description: "",
-  montant: "",
-  statut: "PAYEE" as Charge["statut"],
-  mode_paiement: "CASH" as Charge["mode_paiement"],
-  commande: "" as any,
-});
-
-const pieceFile = ref<File | null>(null);
-
-function resetForm() {
-  editingId.value = null;
-  form.value = {
-    date_charge: new Date().toISOString().slice(0, 10),
-    categorie: "",
-    libelle: "",
-    description: "",
-    montant: "",
-    statut: "PAYEE",
-    mode_paiement: "CASH",
-    commande: "",
-  };
-  pieceFile.value = null;
-  err.value = "";
-  ok.value = "";
-}
-
-function openCreate() {
-  resetForm();
-  modal?.show();
-}
-
-function openEdit(item: Charge) {
-  resetForm();
-  editingId.value = item.id;
-  form.value.date_charge = item.date_charge;
-  form.value.categorie = item.categorie as any;
-  form.value.libelle = item.libelle;
-  form.value.description = item.description || "";
-  form.value.montant = String(item.montant ?? "");
-  form.value.statut = item.statut;
-  form.value.mode_paiement = item.mode_paiement;
-  form.value.commande = (item.commande ?? "") as any;
-  modal?.show();
-}
-
-function onPickPiece(e: Event) {
-  pieceFile.value = (e.target as HTMLInputElement).files?.[0] || null;
-}
-
-async function load() {
-  loading.value = true;
-  err.value = "";
-  try {
-    const [catRes, res, st] = await Promise.all([
-      ChargeAPI.listCategories({ actif: true, page_size: 200 }).catch(() => ({ data: { results: [] } })),
-      ChargeAPI.listCharges({ ...filters.value, page_size: 200 }),
-      ChargeAPI.stats({ ...filters.value }).catch(() => ({ data: null })),
-    ]);
-
-    categories.value = catRes.data?.results || catRes.data || [];
-    items.value = res.data?.results || res.data || [];
-    stats.value = st.data;
-  } catch (e: any) {
-    err.value = "Erreur chargement charges.";
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function save() {
-  saving.value = true;
-  err.value = "";
-  ok.value = "";
-  try {
-    const payload: any = {
-      date_charge: form.value.date_charge,
-      categorie: Number(form.value.categorie),
-      libelle: form.value.libelle,
-      description: form.value.description,
-      montant: form.value.montant,
-      statut: form.value.statut,
-      mode_paiement: form.value.mode_paiement,
-      commande: form.value.commande ? Number(form.value.commande) : null,
-      piece: pieceFile.value,
-    };
-
-    if (!payload.categorie) throw new Error("Catégorie requise");
-    if (!payload.libelle) throw new Error("Libellé requis");
-    if (!payload.montant) throw new Error("Montant requis");
-
-    if (editingId.value) {
-      await ChargeAPI.updateCharge(editingId.value, payload);
-      ok.value = "Charge mise à jour ✅";
-    } else {
-      await ChargeAPI.createCharge(payload);
-      ok.value = "Charge ajoutée ✅";
-    }
-
-    modal?.hide();
-    await load();
-  } catch (e: any) {
-    err.value = e?.message || "Erreur enregistrement charge.";
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function remove(item: Charge) {
-  if (!confirm(`Supprimer la charge: ${item.libelle} ?`)) return;
-  try {
-    await ChargeAPI.deleteCharge(item.id);
-    await load();
-  } catch (e) {
-    alert("Erreur suppression.");
-  }
-}
-
-const totalMontant = computed(() => {
-  const s = stats.value?.total;
-  return typeof s === "number" ? s.toLocaleString() : "0";
-});
-
-onMounted(async () => {
-  await nextTick();
-  if (modalEl.value) modal = new Modal(modalEl.value, { backdrop: "static", keyboard: false });
-  await load();
-});
-</script>
-
 <template>
   <div class="zs-root">
-    <AppNavbar />
-
     <div class="container-fluid py-4 zs-admin">
       <div class="zs-hero mb-3">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
@@ -265,6 +100,7 @@ onMounted(async () => {
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 <tr v-if="loading">
                   <td colspan="8" class="text-center py-4 text-muted">Chargement...</td>
@@ -272,6 +108,7 @@ onMounted(async () => {
                 <tr v-else-if="items.length === 0">
                   <td colspan="8" class="text-center py-4 text-muted">Aucune charge</td>
                 </tr>
+
                 <tr v-for="it in items" :key="it.id">
                   <td>{{ it.date_charge }}</td>
                   <td>{{ it.categorie_nom || it.categorie }}</td>
@@ -294,6 +131,7 @@ onMounted(async () => {
                   </td>
                 </tr>
               </tbody>
+
             </table>
           </div>
         </div>
@@ -308,7 +146,7 @@ onMounted(async () => {
                 <i class="fa-solid fa-coins me-2 text-primary"></i>
                 {{ editingId ? "Modifier une charge" : "Nouvelle charge" }}
               </div>
-              <button type="button" class="btn-close" @click="modal?.hide()"></button>
+              <button type="button" class="btn-close" @click="/* modal instance gérée par composable */ null"></button>
             </div>
 
             <div class="modal-body">
@@ -376,7 +214,7 @@ onMounted(async () => {
             </div>
 
             <div class="modal-footer">
-              <button class="btn btn-outline-secondary zs-btn" @click="modal?.hide()" :disabled="saving">
+              <button class="btn btn-outline-secondary zs-btn" type="button" data-bs-dismiss="modal" :disabled="saving">
                 Annuler
               </button>
               <button class="btn btn-primary zs-btn" @click="save" :disabled="saving">
@@ -393,67 +231,18 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-.zs-admin{
-  background:
-    radial-gradient(900px 360px at 10% 0%, rgba(13,110,253,.10), transparent 55%),
-    radial-gradient(800px 320px at 90% 10%, rgba(25,135,84,.08), transparent 55%),
-    transparent;
-}
-.zs-hero{
-  border-radius: 18px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(255,255,255,.72);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 14px 34px rgba(0,0,0,.10);
-  padding: 14px;
-}
-.zs-dot{
-  width: 10px; height: 10px; border-radius: 999px;
-  background: rgba(13,110,253,1);
-  box-shadow: 0 0 0 5px rgba(13,110,253,.14);
-}
-.zs-title{ font-weight: 950; color: #0f172a; }
-.zs-pill-soft{
-  font-size: .78rem;
-  font-weight: 900;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.65);
-  color: rgba(15,23,42,.70);
-}
-.zs-card{
-  border-radius: 18px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(255,255,255,.72);
-  backdrop-filter: blur(12px);
-}
-.zs-btn{ border-radius: 14px; font-weight: 800; }
-.zs-modal{
-  border-radius: 18px;
-  border: 1px solid rgba(0,0,0,.10);
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 24px 60px rgba(0,0,0,.18);
-  overflow: hidden;
-}
-.zs-kpis{ display:flex; gap: 12px; flex-wrap:wrap; }
-.zs-kpi{
-  flex: 0 0 auto;
-  min-width: 220px;
-  display:flex; gap: 10px; align-items:center;
-  padding: 10px 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.65);
-}
-.zs-kpi-icon{
-  width: 42px; height: 42px; border-radius: 16px;
-  display:flex; align-items:center; justify-content:center;
-  border: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.85);
-}
-.zs-kpi-label{ font-size: .78rem; font-weight: 900; color: rgba(15,23,42,.62); }
-.zs-kpi-value{ font-weight: 950; font-size: 1.15rem; color: rgba(15,23,42,.88); }
-</style>
+<script setup lang="ts">
+import { useChargesView } from "@/views/charge/assets/js/useChargesView";
+
+const {
+  loading, saving, err, ok,
+  items, categories, filters,
+  modalEl, editingId, form,
+  totalMontant,
+  openCreate, openEdit,
+  onPickPiece,
+  load, save, remove,
+} = useChargesView();
+</script>
+
+<style scoped src="@/views/charge/assets/css/ChargesView.css"></style>

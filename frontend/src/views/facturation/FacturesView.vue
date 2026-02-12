@@ -1,9 +1,6 @@
-<!-- frontend/src/views/FacturesView.vue -->
 <template>
-  <div class="zs-root">
-    <AppNavbar />
-
-    <div class="container-fluid py-4 zs-admin">
+  <div class="zs-admin">
+    <div class="container-fluid py-4">
       <!-- HERO -->
       <div class="zs-hero mb-3">
         <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
@@ -137,58 +134,28 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-import AppNavbar from "@/components/AppNavbar.vue";
+<script setup lang="ts">
 import FacturationToolbar from "@/components/facturation/FacturationToolbar.vue";
 import FacturationTable from "@/components/facturation/FacturationTable.vue";
+import { useFacturesView } from "@/views/facturation/assets/js/useFacturesView";
 
-import { useFacturation } from "@/composables/facturation/useFacturation";
-import { formatMoney } from "@/utils/format";
+const {
+  // state
+  loading, error,
+  commandes, totalCount,
+  selectedIds, isAllSelected,
+  loadingPdfId, loadingBulkPdf,
+  viewMode,
 
-export default defineComponent({
-  name: "FacturationView",
-  components: { AppNavbar, FacturationToolbar, FacturationTable },
-  data() {
-    const f = useFacturation();
-    return {
-      ...f,
-      formatMoney,
-      viewMode: "table" as "table" | "card",
-    };
-  },
-  mounted() {
-    this.load();
-  },
-});
+  // actions
+  load,
+  toggleAll,
+  openPdf, downloadPdf,
+  previewSelectedPdf, downloadSelectedPdf,
+
+  // utils
+  formatMoney,
+} = useFacturesView();
 </script>
 
-<style scoped>
-.min-width-0 { min-width: 0; }
-
-/* Pill du titre : plus petit */
-.zs-pill-soft--sm{
-  padding: 0.10rem 0.42rem !important;
-  font-size: 0.66rem !important;
-  line-height: 1 !important;
-  border-radius: 999px !important;
-  white-space: nowrap;
-}
-.zs-pill-soft--sm i{
-  font-size: 0.68rem !important;
-  line-height: 1 !important;
-  vertical-align: -1px;
-}
-
-/* compteur du panel : plus petit */
-.zs-pill-count--sm{
-  padding: 0.08rem 0.42rem !important;
-  font-size: 0.66rem !important;
-  line-height: 1 !important;
-  border-radius: 999px !important;
-}
-</style>
-
-<style>
-@import "@/assets/pages/facturation.css";
-</style>
+<style scoped src="@/views/facturation/assets/css/FacturesView.css"></style>
