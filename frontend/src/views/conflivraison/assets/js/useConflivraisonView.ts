@@ -1,8 +1,12 @@
-import { computed, onMounted, reactive, ref } from "vue";
-import { ConflivraisonAPI, type Livraison, type LivraisonStatut, type CommandeProgrammation } from "@/services/conflivraison";
+import { computed, onMounted, reactive, ref, nextTick, onBeforeUnmount } from "vue";
+import Modal from "bootstrap/js/dist/modal"; // ✅ FIX (ne pas importer "bootstrap")
+import {
+  ConflivraisonAPI,
+  type Livraison,
+  type LivraisonStatut,
+  type CommandeProgrammation,
+} from "@/services/conflivraison";
 import { api } from "@/services/api";
-
-declare const bootstrap: any;
 
 export function useConflivraisonView() {
   const loading = ref(false);
@@ -14,7 +18,6 @@ export function useConflivraisonView() {
   const totalCmd = ref(0);
   const nextCmdUrl = ref<string | null>(null);
   const prevCmdUrl = ref<string | null>(null);
-
   const programmationDates = reactive<Record<number, string>>({});
 
   function toApiPath(url: string) {
@@ -23,12 +26,13 @@ export function useConflivraisonView() {
       const path = u.pathname + u.search;
       return path.startsWith("/api") ? path.replace("/api", "") : path;
     } catch {
-      return url.replace("/api", "");
+      return (url || "").replace("/api", "");
     }
   }
 
   async function loadCommandes(url?: string) {
     loadingCmd.value = true;
+    error.value = null;
     try {
       const res = url ? await api.get(toApiPath(url)) : await ConflivraisonAPI.listCommandes();
       const data: any = res.data;
@@ -40,7 +44,7 @@ export function useConflivraisonView() {
 
       for (const c of commandes.value) {
         if (!programmationDates[c.id]) {
-          programmationDates[c.id] = (c.date_livraison || (c as any).date_prevue || "") as string;
+          programmationDates[c.id] = (c.date_livraison || c.date_prevue || "") as string;
         }
       }
     } catch (e: any) {
@@ -58,7 +62,7 @@ export function useConflivraisonView() {
   }
 
   async function programmer(c: CommandeProgrammation) {
-    const d = programmationDates[c.id];
+    const d = (programmationDates[c.id] || "").trim();
     if (!d) return;
 
     loading.value = true;
@@ -192,12 +196,12 @@ export function useConflivraisonView() {
     }
   }
 
-  /** ====== Modals ====== */
-  const actionModalEl = ref<any>(null);
-  let actionModal: any = null;
+  /** ====== Modals (FIX) ====== */
+  const actionModalEl = ref<HTMLElement | null>(null);
+  const historyModalEl = ref<HTMLElement | null>(null);
 
-  const historyModalEl = ref<any>(null);
-  let historyModal: any = null;
+  let actionModal: Modal | null = null;
+  let historyModal: Modal | null = null;
 
   const modalAction = ref<LivraisonStatut | null>(null);
   const modalTarget = ref<Livraison | null>(null);
@@ -218,7 +222,27 @@ export function useConflivraisonView() {
       : "Action";
   });
 
-  function openModal(action: LivraisonStatut, l: Livraison) {
+  async function ensureModals() {
+    await nextTick();
+    if (actionModalEl.value && !actionModal) {
+      actionModal = Modal.getOrCreateInstance(actionModalEl.value, {
+        backdrop: true,
+        keyboard: true,
+        focus: true,
+      });
+    }
+    if (historyModalEl.value && !historyModal) {
+      historyModal = Modal.getOrCreateInstance(historyModalEl.value, {
+        backdrop: true,
+        keyboard: true,
+        focus: true,
+      });
+    }
+  }
+
+  async function openModal(action: LivraisonStatut, l: Livraison) {
+    if (action !== "ANNULEE" && action !== "REPORTEE") return;
+
     modalAction.value = action;
     modalTarget.value = l;
 
@@ -226,29 +250,67 @@ export function useConflivraisonView() {
     actionPayload.commentaire = "";
     actionPayload.date_prevue = l.date_prevue || "";
 
-    actionModal?.show();
+    await ensureModals();
+    if (!actionModal) {
+      error.value = "Modal Action introuvable (ref non monté).";
+      return;
+    }
+    actionModal.show();
   }
 
   async function confirmModal() {
     if (!modalAction.value || !modalTarget.value) return;
 
     const id = modalTarget.value.id;
+
     const payload: any = {
-      raison: actionPayload.raison,
-      commentaire: actionPayload.commentaire,
+      raison: actionPayload.raison || "",
+      commentaire: actionPayload.commentaire || "",
     };
-    if (modalAction.value === "REPORTEE") payload.date_prevue = actionPayload.date_prevue || null;
+    if (modalAction.value === "REPORTEE") {
+      payload.date_prevue = actionPayload.date_prevue || null;
+    }
 
     loading.value = true;
     error.value = null;
     try {
-      if (modalAction.value === "ANNULEE") await ConflivraisonAPI.annuler(id, payload);
-      if (modalAction.value === "REPORTEE") await ConflivraisonAPI.reporter(id, payload);
+      if (modalAction.value === "ANNULEE") {
+        await ConflivraisonAPI.annuler(id, payload);
+      } else {
+        await ConflivraisonAPI.reporter(id, payload);
+      }
 
+      await ensureModals();
       actionModal?.hide();
+
+      modalAction.value = null;
+      modalTarget.value = null;
+
       await refreshAll();
     } catch (e: any) {
-      error.value = e?.response?.data?.detail || "Erreur action";
+      const d = e?.response?.data;
+      error.value = d?.detail || (typeof d === "string" ? d : null) || "Erreur action";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function openHistory(l: Livraison) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const res = await ConflivraisonAPI.history(l.id);
+      historyTarget.value = res.data;
+
+      await ensureModals();
+      if (!historyModal) {
+        error.value = "Modal Historique introuvable (ref non monté).";
+        return;
+      }
+      historyModal.show();
+    } catch (e: any) {
+      const d = e?.response?.data;
+      error.value = d?.detail || (typeof d === "string" ? d : null) || "Erreur chargement historique";
     } finally {
       loading.value = false;
     }
@@ -262,42 +324,29 @@ export function useConflivraisonView() {
       if (action === "LIVREE") await ConflivraisonAPI.livrer(l.id, {});
       await refreshAll();
     } catch (e: any) {
-      error.value = e?.response?.data?.detail || "Erreur action";
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  async function openHistory(l: Livraison) {
-    loading.value = true;
-    error.value = null;
-    try {
-      const res = await ConflivraisonAPI.history(l.id);
-      historyTarget.value = res.data;
-      historyModal?.show();
-    } catch (e: any) {
-      error.value = e?.response?.data?.detail || "Erreur chargement historique";
+      const d = e?.response?.data;
+      error.value = d?.detail || (typeof d === "string" ? d : null) || "Erreur action";
     } finally {
       loading.value = false;
     }
   }
 
   onMounted(async () => {
-    if (!bootstrap || !bootstrap.Modal) {
-      error.value = "Bootstrap JS non chargé : impossible d'ouvrir les modals (Historique / Actions).";
-      await refreshAll();
-      return;
-    }
-    actionModal = new bootstrap.Modal(actionModalEl.value);
-    historyModal = new bootstrap.Modal(historyModalEl.value);
     await refreshAll();
+    await ensureModals(); // ✅ initialise aussi au montage
+  });
+
+  onBeforeUnmount(() => {
+    actionModal?.dispose();
+    historyModal?.dispose();
+    actionModal = null;
+    historyModal = null;
   });
 
   return {
     loading,
     error,
 
-    // commandes
     loadingCmd,
     commandes,
     totalCmd,
@@ -309,7 +358,6 @@ export function useConflivraisonView() {
     prevCmd,
     programmer,
 
-    // livraisons
     items,
     total,
     nextUrl,
@@ -326,14 +374,12 @@ export function useConflivraisonView() {
     refreshAll,
     sync,
 
-    // helpers
     isFinal,
     labelStatut,
     statusClass,
     statusIcon,
     formatDT,
 
-    // modals
     actionModalEl,
     historyModalEl,
     modalTitle,

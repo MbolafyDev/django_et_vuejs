@@ -77,6 +77,7 @@ const userRoleLabel = computed(() => {
 
 /* ===========================
    Tooltips Bootstrap (hover seulement) - desktop only
+   ✅ FIX: on EXCLUT le bouton dropdown (sinon conflit click/focus)
 =========================== */
 function disposeAllTooltips() {
   document.querySelectorAll('[data-zs-tooltip="1"]').forEach((el) => {
@@ -84,10 +85,13 @@ function disposeAllTooltips() {
     if (instance) instance.dispose();
   });
 }
+
 function initTooltipsHover() {
   if (window.matchMedia("(max-width: 991.98px)").matches) return;
   disposeAllTooltips();
-  document.querySelectorAll('[data-zs-tooltip="1"]').forEach((el) => {
+
+  // ✅ Exclure le dropdown-toggle (gear) pour ne pas bloquer le dropdown
+  document.querySelectorAll('[data-zs-tooltip="1"]:not(.dropdown-toggle)').forEach((el) => {
     new Tooltip(el as Element, { placement: "bottom", trigger: "hover focus" });
   });
 }
@@ -299,14 +303,12 @@ watch(
 
               <!-- ✅ Dropdown paramètres -->
               <div class="nav-item dropdown">
+                <!-- ✅ FIX: pas de tooltip sur le bouton dropdown (sinon conflit click/focus) -->
                 <button
                   class="btn zs-btn zs-btn-neo zs-btn-gear dropdown-toggle"
                   type="button"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
-                  data-zs-tooltip="1"
-                  data-bs-placement="bottom"
-                  title="Paramètres"
                 >
                   <i class="fa-solid fa-gear"></i>
                 </button>
@@ -720,6 +722,12 @@ watch(
   background: rgba(255,255,255,.92);
   overflow: hidden;
 }
+
+/* ✅ FIX: s'assurer que le dropdown passe au-dessus du glass */
+.dropdown-menu{
+  z-index: 2000;
+}
+
 .zs-dd-logo{
   width: 18px; height: 18px;
   border-radius: 6px;
@@ -890,4 +898,8 @@ watch(
 .zs-sb-enter-active .zs-sb, .zs-sb-leave-active .zs-sb{ transition: transform .18s ease; }
 .zs-sb-enter-from .zs-sb{ transform: translateX(-14px); }
 .zs-sb-leave-to .zs-sb{ transform: translateX(-14px); }
+
+/* .zs-navbar { overflow: visible !important; }
+.zs-nav-wrap { overflow: visible !important; }
+.zs-nav-inner { overflow: visible !important; } */
 </style>

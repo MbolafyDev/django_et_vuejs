@@ -1,3 +1,4 @@
+<!-- frontend/src/views/conflivraison/ConflivraisonListView.vue -->
 <template>
   <div class="zs-root">
     <div class="container-fluid py-4 zs-admin">
@@ -61,17 +62,31 @@
 
           <!-- Actions -->
           <div class="d-flex gap-2 flex-wrap align-items-center">
-            <button class="btn btn-outline-secondary zs-btn zs-btn-neo" @click="refreshAll()" :disabled="loading || loadingCmd" title="Rafraîchir">
+            <button
+              class="btn btn-outline-secondary zs-btn zs-btn-neo"
+              @click="refreshAll()"
+              :disabled="loading || loadingCmd"
+              title="Rafraîchir"
+            >
               <i class="fa-solid fa-rotate"></i>
               <span class="ms-2 d-none d-sm-inline">Rafraîchir</span>
             </button>
 
-            <button class="btn btn-outline-primary zs-btn zs-btn-neo" @click="sync" :disabled="loading" title="Sync">
+            <button
+              class="btn btn-outline-primary zs-btn zs-btn-neo"
+              @click="sync"
+              :disabled="loading"
+              title="Sync"
+            >
               <i class="fa-solid fa-wand-magic-sparkles"></i>
               <span class="ms-2 d-none d-sm-inline">Sync</span>
             </button>
 
-            <button class="btn btn-outline-primary zs-btn zs-btn-neo" @click="toggleFilters" title="Filtres">
+            <button
+              class="btn btn-outline-primary zs-btn zs-btn-neo"
+              @click="toggleFilters"
+              title="Filtres"
+            >
               <i class="fa-solid fa-filter me-1"></i>
               Filtres
               <span v-if="hasActiveFilters" class="zs-dot-mini ms-2"></span>
@@ -146,7 +161,11 @@
                     </td>
 
                     <td>
-                      <input type="date" class="form-control form-control-sm zs-input" v-model="programmationDates[c.id]" />
+                      <input
+                        type="date"
+                        class="form-control form-control-sm zs-input"
+                        v-model="programmationDates[c.id]"
+                      />
                       <div class="text-muted small mt-1">
                         Actuelle: <span class="fw-semibold">{{ c.date_livraison || "-" }}</span>
                       </div>
@@ -164,7 +183,11 @@
                     </td>
 
                     <td class="text-end">
-                      <button class="btn btn-sm btn-primary zs-btn zs-btn-neo" @click="programmer(c)" :disabled="loading || !programmationDates[c.id]">
+                      <button
+                        class="btn btn-sm btn-primary zs-btn zs-btn-neo"
+                        @click="programmer(c)"
+                        :disabled="loading || !programmationDates[c.id]"
+                      >
                         <i class="fa-solid fa-calendar-check me-1"></i>
                         Programmer
                       </button>
@@ -177,10 +200,18 @@
             <div class="zs-panel-foot border-top">
               <div class="small text-muted">Total: {{ totalCmd }}</div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="prevCmd" :disabled="!prevCmdUrl || loadingCmd">
+                <button
+                  class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo"
+                  @click="prevCmd"
+                  :disabled="!prevCmdUrl || loadingCmd"
+                >
                   <i class="fa-solid fa-chevron-left me-1"></i> Précédent
                 </button>
-                <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="nextCmd" :disabled="!nextCmdUrl || loadingCmd">
+                <button
+                  class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo"
+                  @click="nextCmd"
+                  :disabled="!nextCmdUrl || loadingCmd"
+                >
                   Suivant <i class="fa-solid fa-chevron-right ms-1"></i>
                 </button>
               </div>
@@ -201,7 +232,11 @@
           <div class="row g-2 align-items-end">
             <div class="col-12 col-md-4">
               <label class="form-label small text-muted mb-1">Recherche</label>
-              <input v-model="filters.q" class="form-control form-control-sm zs-input" placeholder="Client, téléphone, lieu, #commande..." />
+              <input
+                v-model="filters.q"
+                class="form-control form-control-sm zs-input"
+                placeholder="Client, téléphone, lieu, #commande..."
+              />
             </div>
 
             <div class="col-6 col-md-3">
@@ -218,7 +253,11 @@
 
             <div class="col-6 col-md-3">
               <label class="form-label small text-muted mb-1">Date prévue</label>
-              <input v-model="filters.date_prevue" type="date" class="form-control form-control-sm zs-input" />
+              <input
+                v-model="filters.date_prevue"
+                type="date"
+                class="form-control form-control-sm zs-input"
+              />
             </div>
 
             <div class="col-12 col-md-2 d-grid">
@@ -295,23 +334,47 @@
 
                     <td class="text-end">
                       <div class="d-inline-flex gap-2 zs-actions">
-                        <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="openHistory(l)" title="Historique">
+                        <button
+                          class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo"
+                          @click="openHistory(l)"
+                          title="Historique"
+                        >
                           <i class="fa-solid fa-clock-rotate-left"></i>
                         </button>
 
-                        <button class="btn btn-sm btn-outline-primary zs-btn zs-btn-neo" @click="act('EN_LIVRAISON', l)" :disabled="loading || isFinal(l.statut)" title="Mettre en livraison">
+                        <button
+                          class="btn btn-sm btn-outline-primary zs-btn zs-btn-neo"
+                          @click="act('EN_LIVRAISON', l)"
+                          :disabled="loading || isFinal(l.statut)"
+                          title="Mettre en livraison"
+                        >
                           <i class="fa-solid fa-truck"></i>
                         </button>
 
-                        <button class="btn btn-sm btn-outline-success zs-btn zs-btn-neo" @click="act('LIVREE', l)" :disabled="loading || isFinal(l.statut)" title="Marquer livrée">
+                        <button
+                          class="btn btn-sm btn-outline-success zs-btn zs-btn-neo"
+                          @click="act('LIVREE', l)"
+                          :disabled="loading || isFinal(l.statut)"
+                          title="Marquer livrée"
+                        >
                           <i class="fa-solid fa-circle-check"></i>
                         </button>
 
-                        <button class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo" @click="openModal('REPORTEE', l)" :disabled="loading || isFinal(l.statut)" title="Reporter">
+                        <button
+                          class="btn btn-sm btn-outline-warning zs-btn zs-btn-neo"
+                          @click="openModal('REPORTEE', l)"
+                          :disabled="loading || isFinal(l.statut)"
+                          title="Reporter"
+                        >
                           <i class="fa-solid fa-calendar-days"></i>
                         </button>
 
-                        <button class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo" @click="openModal('ANNULEE', l)" :disabled="loading || isFinal(l.statut)" title="Annuler">
+                        <button
+                          class="btn btn-sm btn-outline-danger zs-btn zs-btn-neo"
+                          @click="openModal('ANNULEE', l)"
+                          :disabled="loading || isFinal(l.statut)"
+                          title="Annuler"
+                        >
                           <i class="fa-solid fa-ban"></i>
                         </button>
                       </div>
@@ -324,10 +387,18 @@
             <div class="zs-panel-foot border-top">
               <div class="small text-muted">Total: {{ total }}</div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="prev" :disabled="!prevUrl || loading">
+                <button
+                  class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo"
+                  @click="prev"
+                  :disabled="!prevUrl || loading"
+                >
                   <i class="fa-solid fa-chevron-left me-1"></i> Précédent
                 </button>
-                <button class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo" @click="next" :disabled="!nextUrl || loading">
+                <button
+                  class="btn btn-sm btn-outline-secondary zs-btn zs-btn-neo"
+                  @click="next"
+                  :disabled="!nextUrl || loading"
+                >
                   Suivant <i class="fa-solid fa-chevron-right ms-1"></i>
                 </button>
               </div>
@@ -339,91 +410,110 @@
 
     </div>
 
-    <!-- Modal Action -->
-    <div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true" ref="actionModalEl">
-      <div class="modal-dialog">
-        <div class="modal-content zs-modal">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ modalTitle }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-2">
-              <label class="form-label small text-muted mb-1">Raison</label>
-              <input v-model="actionPayload.raison" class="form-control form-control-sm zs-input" placeholder="Ex: client absent..." />
+    <!-- ✅ IMPORTANT: Teleport => modals toujours visibles (z-index / overflow fix) -->
+    <teleport to="body">
+      <!-- Modal Action -->
+      <div class="modal fade" tabindex="-1" aria-hidden="true" ref="actionModalEl">
+        <div class="modal-dialog">
+          <div class="modal-content zs-modal">
+            <div class="modal-header">
+              <h5 class="modal-title">{{ modalTitle }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-
-            <div class="mb-2" v-if="modalAction==='REPORTEE'">
-              <label class="form-label small text-muted mb-1">Nouvelle date prévue</label>
-              <input v-model="actionPayload.date_prevue" type="date" class="form-control form-control-sm zs-input" />
-            </div>
-
-            <div>
-              <label class="form-label small text-muted mb-1">Commentaire</label>
-              <textarea v-model="actionPayload.commentaire" class="form-control form-control-sm zs-input" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-outline-secondary zs-btn zs-btn-neo" data-bs-dismiss="modal">Fermer</button>
-            <button class="btn btn-primary zs-btn zs-btn-neo" @click="confirmModal" :disabled="loading">
-              <i class="fa-solid fa-check me-1"></i> Confirmer
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal History -->
-    <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true" ref="historyModalEl">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content zs-modal">
-          <div class="modal-header">
-            <h5 class="modal-title">Historique</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-          </div>
-          <div class="modal-body">
-            <div v-if="!historyTarget" class="text-muted">Aucune sélection.</div>
-            <div v-else>
+            <div class="modal-body">
               <div class="mb-2">
-                <div class="fw-semibold">
-                  Livraison L{{ historyTarget.id }} — Cmd #{{ historyTarget.commande_detail.id }}
-                </div>
-                <div class="text-muted small">
-                  {{ historyTarget.commande_detail.client_nom }} — {{ historyTarget.commande_detail.client_contact }}
-                </div>
+                <label class="form-label small text-muted mb-1">Raison</label>
+                <input
+                  v-model="actionPayload.raison"
+                  class="form-control form-control-sm zs-input"
+                  placeholder="Ex: client absent..."
+                />
               </div>
 
-              <div v-if="historyTarget.events.length===0" class="text-muted">Aucun événement.</div>
-
-              <div v-else class="table-responsive zs-table-wrap">
-                <table class="table table-sm align-middle mb-0 zs-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Statut</th>
-                      <th>Message</th>
-                      <th>Acteur</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="e in historyTarget.events" :key="e.id">
-                      <td>{{ formatDT(e.created_at) }}</td>
-                      <td class="text-nowrap">{{ e.from_statut }} → {{ e.to_statut }}</td>
-                      <td>{{ e.message }}</td>
-                      <td>{{ e.actor_name || "-" }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div class="mb-2" v-if="modalAction === 'REPORTEE'">
+                <label class="form-label small text-muted mb-1">Nouvelle date prévue</label>
+                <input
+                  v-model="actionPayload.date_prevue"
+                  type="date"
+                  class="form-control form-control-sm zs-input"
+                />
               </div>
 
+              <div>
+                <label class="form-label small text-muted mb-1">Commentaire</label>
+                <textarea
+                  v-model="actionPayload.commentaire"
+                  class="form-control form-control-sm zs-input"
+                  rows="3"
+                ></textarea>
+              </div>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-outline-secondary zs-btn zs-btn-neo" data-bs-dismiss="modal">Fermer</button>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary zs-btn zs-btn-neo" data-bs-dismiss="modal">
+                Fermer
+              </button>
+              <button class="btn btn-primary zs-btn zs-btn-neo" @click="confirmModal" :disabled="loading">
+                <i class="fa-solid fa-check me-1"></i> Confirmer
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Modal History -->
+      <div class="modal fade" tabindex="-1" aria-hidden="true" ref="historyModalEl">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content zs-modal">
+            <div class="modal-header">
+              <h5 class="modal-title">Historique</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+              <div v-if="!historyTarget" class="text-muted">Aucune sélection.</div>
+              <div v-else>
+                <div class="mb-2">
+                  <div class="fw-semibold">
+                    Livraison L{{ historyTarget.id }} — Cmd #{{ historyTarget.commande_detail.id }}
+                  </div>
+                  <div class="text-muted small">
+                    {{ historyTarget.commande_detail.client_nom }} — {{ historyTarget.commande_detail.client_contact }}
+                  </div>
+                </div>
+
+                <div v-if="historyTarget.events.length === 0" class="text-muted">Aucun événement.</div>
+
+                <div v-else class="table-responsive zs-table-wrap">
+                  <table class="table table-sm align-middle mb-0 zs-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Statut</th>
+                        <th>Message</th>
+                        <th>Acteur</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="e in historyTarget.events" :key="e.id">
+                        <td>{{ formatDT(e.created_at) }}</td>
+                        <td class="text-nowrap">{{ e.from_statut }} → {{ e.to_statut }}</td>
+                        <td>{{ e.message }}</td>
+                        <td>{{ e.actor_name || "-" }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary zs-btn zs-btn-neo" data-bs-dismiss="modal">
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </teleport>
 
   </div>
 </template>
